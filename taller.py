@@ -23,6 +23,8 @@ E = 15100*np.sqrt(fpc)*g*(100**2) # N/m² módulo de E. del Concreto NSR-10
 # columnas.
 b = 0.3 # m
 I = b*b**3/12 # m**4
-k_serie = 2*(12*E*I/h**3) # N/m SERIE
-k = 1/(2*(1/k_serie)) # PARALELO
+k_col = 12*E*I/h**3 # N/m
+k_serie = 1/(2*(1/k_col))
+k = 2*k_serie # PARALELO
+
 w = np.sqrt(k/m)
