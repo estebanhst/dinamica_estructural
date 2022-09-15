@@ -15,7 +15,7 @@ v0 = 8 # m/s Velocidad inicial, dirección x
 A = l*l   # m² Área losa
 m = M6*A  # kg
 delta_max = 0.007*h # m Desplazamiento máximo asumido en dirección x
-E = 15100*np.sqrt(fpc)*g*(100**2) # N/m² módulo de E. del Concreto
+E = 15100*np.sqrt(fpc)*g*(100**2) # N/m² módulo de E. del Concreto NSR-10  
 
 # RIGIDEZ DE LA ESTRUCTURA
 # Se toma esta rigidez dado que es la que aportan las columnas de forma
@@ -23,6 +23,6 @@ E = 15100*np.sqrt(fpc)*g*(100**2) # N/m² módulo de E. del Concreto
 # columnas.
 b = 0.3 # m
 I = b*b**3/12 # m**4
-k = 4*(12*E*I/h**3) # N/m
-
+k_serie = 2*(12*E*I/h**3) # N/m SERIE
+k = 1/(2*(1/k_serie)) # PARALELO
 w = np.sqrt(k/m)
