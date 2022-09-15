@@ -28,3 +28,5 @@ k_serie = 1/(2*(1/k_col))
 k = 2*k_serie # PARALELO
 
 w = np.sqrt(k/m)
+
+# Comentario de Heidy para ver si Git funciona
