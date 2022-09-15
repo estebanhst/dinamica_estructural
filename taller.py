@@ -26,3 +26,5 @@ I = b*b**3/12 # m**4
 k_serie = 2*(12*E*I/h**3) # N/m SERIE
 k = 1/(2*(1/k_serie)) # PARALELO
 w = np.sqrt(k/m)
+
+# Comentario de Heidy para ver si Git funciona
