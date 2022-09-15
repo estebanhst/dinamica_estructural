@@ -19,8 +19,9 @@ v0 = 8       # m/s Velocidad inicial, dirección x
 A = l*l   # m² Área losa
 m = M6*A  # kg
 delta_max = 0.007*h # m Desplazamiento máximo asumido en dirección x
-E = 15100*np.sqrt(fpc)*g*(100**2) # N/m² módulo de E. del Concreto NSR-10  
-fs = m*0.95*g # N Fuerza que produce la máxima deformación
+E = 15100*np.sqrt(fpc)*g*(100**2) # N/m² módulo de E. del Concreto NSR-10
+a_delta_max = 0.95*g # Aceleración asociada al desplazamiento máximo
+fs = m*a_delta_max # N Fuerza que produce la máxima deformación
 
 # %% cálculo de rigidez
 # Asumiendo el comportamiento elástico lineal del material, puede determinarse
@@ -32,7 +33,7 @@ k_min = fs/delta_max # N/m
 # columnas.
 n_cols = 4 # número de columnas
 I_min = k_min*h**3/(12*n_cols*E) # m^4
-b_min = (12*I_min)**(1/4) # m
+b_min = (12*I_min)**(1/4) # m base mínima columna sección cuadrada
 # Propiedades colocadas
 # b = b_min
 b = 0.85 # m
@@ -45,6 +46,19 @@ w = np.sqrt(k/m)
 delta_t = 0.01; # s
 tt = np.arange(0,4, delta_t)
 xxi = np.array([0.0, 0.05, 0.10, 0.30])
-wd = np.sqrt(1-xxi**2)*w
+wD = np.sqrt(1-xxi**2)*w
 
-# %%
+
+# %% Funciones
+def x_t(t, w, xi, v0, x0, wD):
+    x = np.exp(-xi*w*t)*(x0*np.cos(wD*t)+(v0+xi*x0*w)/wD*np.sin(wD*t))
+    return x
+def v_t(t, w, xi, v0, x0, wD):
+    const = (xi*w*v0+xi**2*w**2*x0+x0*wD**2)/wD
+    v = np.exp(-xi*w*t)*(v0*np.cos(wD*t)+const*np.sin(wD*t))
+    return v
+def a_t(t,w,xi,v0,x0,wD):
+    const = (xi*w*v0+xi**2*w**2*x0+x0*wD**2)/wD
+    a = np.exp(-xi*w*t)*(-(xi*w*v0+const*wD)*np.cos(wD*t)+(const*xi*w-v0*wD)*np.sin(wD*t))
+    return a
+
