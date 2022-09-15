@@ -39,7 +39,12 @@ b = 0.85 # m
 I = b*b**3/12 # m^4
 k_col = 12*E*I/h**3 # N/m
 k = 4*k_col # cuatro columnas
-
 w = np.sqrt(k/m)
+
+# %% Vectores
+delta_t = 0.01; # s
+tt = np.arange(0,4, delta_t)
+xxi = np.array([0.0, 0.05, 0.10, 0.30])
+wd = np.sqrt(1-xxi**2)*w
 
 # %%
