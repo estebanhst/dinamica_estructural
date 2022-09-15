@@ -3,6 +3,7 @@
 '''
 # %% importación de librerías
 import numpy as np
+import matplotlib.pyplot as plt
 
 # %% definición de variables
 g = 9.81  # m/s²
@@ -44,9 +45,10 @@ w = np.sqrt(k/m)
 
 # %% Vectores
 delta_t = 0.01; # s
-tt = np.arange(0,4, delta_t)
+tt = np.arange(0,10, delta_t)
 xxi = np.array([0.0, 0.05, 0.10, 0.30])
 wD = np.sqrt(1-xxi**2)*w
+cc = 2*xxi*m*w
 
 
 # %% Funciones
@@ -57,8 +59,87 @@ def v_t(t, w, xi, v0, x0, wD):
     const = (xi*w*v0+xi**2*w**2*x0+x0*wD**2)/wD
     v = np.exp(-xi*w*t)*(v0*np.cos(wD*t)+const*np.sin(wD*t))
     return v
-def a_t(t,w,xi,v0,x0,wD):
+def a_t(t, w, xi, v0, x0, wD):
     const = (xi*w*v0+xi**2*w**2*x0+x0*wD**2)/wD
     a = np.exp(-xi*w*t)*(-(xi*w*v0+const*wD)*np.cos(wD*t)+(const*xi*w-v0*wD)*np.sin(wD*t))
     return a
 
+# %% Gráficas
+m = len(xxi)
+n = len(tt)
+xx = np.empty((m,n))
+vv = np.empty((m,n))
+aa = np.empty((m,n))
+# fi = np.empty((m,n))
+# fa = np.empty((m,n))
+# fr = np.empty((m,n))
+
+
+# Desplazamientos, velocidades y aceleraciones
+for i in range(m):
+    xx[i] = x_t(tt, w, xxi[i], v0, x0, wD[i])
+    vv[i] = v_t(tt, w, xxi[i], v0, x0, wD[i])
+    aa[i] = a_t(tt, w, xxi[i], v0, x0, wD[i])
+
+# Fuerzas de inercia, amortiguamiento y rigidez
+
+fi = m*aa
+fa = (np.tile(cc,(1000,1)).T)*vv
+fr = k*xx
+
+
+
+fig = plt.figure()
+ax1 = fig.add_subplot(3,1,1)
+ax2 = fig.add_subplot(3,1,2)
+ax3 = fig.add_subplot(3,1,3)
+
+for i in range(m):
+    ax1.plot(tt,xx[i], label=r'$\xi=$'+ str(xxi[i]))
+    ax2.plot(tt,vv[i], label=r'$\xi=$'+ str(xxi[i]))
+    ax3.plot(tt,aa[i], label=r'$\xi=$'+ str(xxi[i]))
+
+ax1.set_title("Desplazamientos")
+ax1.set_ylabel(r'$x(t) [m]$')
+ax1.set_xlabel(r'$t [s]$')
+ax1.legend(loc=0)
+ax1.grid()
+ax2.set_title("Velocidades")
+ax2.set_ylabel(r'$v(t) [m/s]$')
+ax2.set_xlabel(r'$t [s]$')
+ax2.legend(loc=0)
+ax2.grid()
+ax3.set_title("Aceleraciones")
+ax3.set_ylabel(r'$a(t) [m/s^2]$')
+ax3.set_xlabel(r'$t [s]$')
+ax3.legend(loc=0)
+ax3.grid()
+plt.show()
+
+fig = plt.figure()
+ax1 = fig.add_subplot(3,1,1)
+ax2 = fig.add_subplot(3,1,2)
+ax3 = fig.add_subplot(3,1,3)
+
+for i in range(m):
+    ax1.plot(tt,fr[i], label=r'$\xi=$'+ str(xxi[i]))
+    ax2.plot(tt,fa[i], label=r'$\xi=$'+ str(xxi[i]))
+    ax3.plot(tt,fi[i], label=r'$\xi=$'+ str(xxi[i]))
+
+ax1.set_title("Fuerzas de rigidez")
+ax1.set_ylabel(r'$F_r(t) [N]$')
+ax1.set_xlabel(r'$t [s]$')
+ax1.legend(loc=0)
+ax1.grid()
+ax2.set_title("Fuerzas de amortiguamiento")
+ax2.set_ylabel(r'$F_a(t) [N]$')
+ax2.set_xlabel(r'$t [s]$')
+ax2.legend(loc=0)
+ax2.grid()
+ax3.set_title("Fuerzas de inercia")
+ax3.set_ylabel(r'$F_I(t) [N]$')
+ax3.set_xlabel(r'$t [s]$')
+ax3.legend(loc=0)
+ax3.grid()
+plt.show()
+# %%
