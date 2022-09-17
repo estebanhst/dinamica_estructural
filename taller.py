@@ -9,20 +9,20 @@ import matplotlib.pyplot as plt
 g = 9.81  # m/s²
 M6 = 2000 # kg/m² carga losa
 l = 6     # m lado losa
-h = 20    # m altura
+H = 20    # m altura
 fpc = 210 # kgf/cm² f'c del concreto
 
 # %% condiciones iniciales
-x0 = 0.009*h # m Posición inicial impacto natural, dirección x
+x0 = 0.009*H # m Posición inicial impacto natural, dirección x 0.9%
 v0 = 8       # m/s Velocidad inicial, dirección x
 
 # %% cálculos
 A = l*l   # m² Área losa
 masa = M6*A  # kg
-delta_max = 0.007*h # m Desplazamiento máximo asumido en dirección x
+delta_max = 0.007*H # m Desplazamiento máximo asumido en dirección x
 E = 15100*np.sqrt(fpc)*g*(100**2) # N/m² módulo de E. del Concreto NSR-10
-a_delta_max = 0.95*g # m/s² Aceleración asociada al desplazamiento máximo
-fs = masa*a_delta_max # N Fuerza que produce la máxima deformación
+s_a = 0.95*g # m/s² Aceleración asociada al desplazamiento máximo
+fs = masa*s_a # N Fuerza que produce la máxima deformación
 
 # %% cálculo de rigidez
 # Asumiendo el comportamiento elástico lineal del material, puede determinarse
@@ -33,18 +33,19 @@ k_min = fs/delta_max # N/m
 # perpendicular a su eje axial. Se considera una sección cuadrada para las
 # columnas.
 n_cols = 4 # número de columnas
-I_min = k_min*h**3/(12*n_cols*E) # m^4
+I_min = k_min*H**3/(12*n_cols*E) # m^4
 b_min = (12*I_min)**(1/4) # m base mínima columna sección cuadrada
 # Propiedades colocadas
 # b = b_min
 b = 0.85 # m
-I = b*b**3/12 # m^4
-k_col = 12*E*I/h**3 # N/m
+h = 0.85 # m
+I = b*h**3/12 # m^4
+k_col = 12*E*I/(H**3) # N/m
 k = 4*k_col # cuatro columnas
 w = np.sqrt(k/masa)
 
 # %% Vectores
-delta_t = 0.001; # s
+delta_t = 0.01; # s
 tt = np.arange(0,10, delta_t) # s
 xxi = np.array([0.0, 0.05, 0.10, 0.30]) # adim -> c/cc
 wD = np.sqrt(1-xxi**2)*w  # 1/s
@@ -70,10 +71,6 @@ n = len(tt)
 xx = np.empty((m,n))
 vv = np.empty((m,n))
 aa = np.empty((m,n))
-# fi = np.empty((m,n))
-# fa = np.empty((m,n))
-# fr = np.empty((m,n))
-
 
 # Desplazamientos, velocidades y aceleraciones
 for i in range(m):
