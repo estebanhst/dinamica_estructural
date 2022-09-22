@@ -4,11 +4,14 @@ Presentado por: Nelson Esteban Hernández Soto
 #%% INICIO
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
+
 n_asignado = 7
-g = 9.81 # m/s²
+g = 9.8 # m/s²
 # Se asume que se tiene un edificio de concreto reforzado
 fpc = 210 # kgf/cm²
 E_c = 15100*np.sqrt(fpc)*g*(100**2)/1000  # [kN/m²]
+N_PISOS = 3
 #%% CONSTANTES PARA MEJORAR LA LECTURA DEL CÓDIGO
 NL1, NL2, TIPO = 0, 1, 2     # Nodo local 1, Nodo local 2
 X, Y, TH       = 0, 1, 2     # TH = theta
@@ -52,7 +55,7 @@ barra = np.array([[1,    2,   1],
                   [8,   12,   2]])-1
 
 LaG = barra[:, [NL1, NL2]]  # local a global
-tipo = barra[:, TIPO]        # material - 1 viga - 2 cercha
+tipo = barra[:, TIPO]        # material - 1 columna - 2 viga
 nno  = xnod.shape[0] # número de nodos (numero de filas de xnod)
 nbar = LaG.shape[0]  # número de EFs (numero de filas de LaG)
 ngdl = 3*nno         # número de grados de libertad (tres por nodo)
@@ -66,7 +69,7 @@ for e in range(nbar):
     x1[e] = xnod[LaG[e,NL1], X];  x2[e] = xnod[LaG[e,NL2], X]
     y1[e] = xnod[LaG[e,NL1], Y];  y2[e] = xnod[LaG[e,NL2], Y]
 # Dimensiones de los elementos del pórtico np.array([b, h])
-COL = np.array([0.30, 0.30])
+COL = np.array([0.40, 0.40])
 VIG = np.array([0.30, 0.40])
 
 #                  área       inercias_y       módulo de elasticidad
@@ -147,3 +150,34 @@ for e in range(nbar): # para cada barra
    # matriz de rigidez local en coordenadas globales
    Ke[e] = T[e].T @ Kloc @ T[e]
    K[np.ix_(idx[e],idx[e])] += Ke[e] # ensambla Ke{e} en K global
+
+#%% grados de libertad del desplazamiento conocidos (c) y desconocidos (d)
+apoyos = np.array([[gdl[1-1,X],  0],
+                   [gdl[1-1,Y],  0],
+                   [gdl[1-1,TH], 0],
+                   [gdl[5-1,X],  0],
+                   [gdl[5-1,Y],  0],
+                   [gdl[5-1,TH], 0],
+                   [gdl[9-1,X],  0],
+                   [gdl[9-1,Y],  0],
+                   [gdl[9-1,TH], 0]])
+
+c = apoyos[:,0].astype(int)
+d = np.setdiff1d(np.arange(ngdl), c)
+gdl_nc = np.setdiff1d(d, np.union1d(gdl[:,Y], gdl[:,TH]))
+gdl_c = np.setdiff1d(d, gdl_nc)
+
+K0 = K[ np.ix_( gdl_nc, gdl_nc )]
+K1 = K[ np.ix_( gdl_nc, gdl_c ) ] 
+K2 = K[ np.ix_( gdl_c, gdl_nc ) ] 
+K3 = K[ np.ix_( gdl_c, gdl_c )  ]
+
+K_con = K0 - K1 @ np.linalg.inv(K3) @ K2
+
+# Ahora lo que resta es sumar los grados de libertad por cada piso para así reducir la matriz
+# AQUÍ SE EVIDENCIA LA IMPORTANCIA DE NUMERAR EN ORDEN PRIMERO LAS COLUMNAS Y LUEGO LAS VIGAS
+
+# %%
+df = pd.DataFrame(K_con)
+filepath = 'MatrizK_con.xlsx'
+df.to_excel(filepath, index=False)
