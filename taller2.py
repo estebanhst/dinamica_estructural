@@ -6,16 +6,127 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
+def reducir_matriz(K, n_pisos):
+   # Primero se reduce por las filas
+   gdl = np.shape(K)[0]
+   K_f = np.zeros((n_pisos, gdl))
+   for i in range(n_pisos):
+      for j in range(int(gdl/n_pisos)):
+         K_f[i] += K[i+3*j]
+   # Ahora se reduce por columnas
+   K_r = np.zeros((n_pisos, n_pisos))
+   for i in range(n_pisos):
+      for j in range(int(gdl/n_pisos)):
+         K_r[:,i] += K_f[:,i+3*j]
+   return K_r
+
+#%% CONSTANTES PARA MEJORAR LA LECTURA DEL CÓDIGO
+NL1, NL2, TIPO = 0, 1, 2     # Nodo local 1, Nodo local 2
+X, Y, TH       = 0, 1, 2     # TH = theta
+b, h           = 0, 1        # b = base, h = altura
+
 n_asignado = 7
 g = 9.8 # m/s²
 # Se asume que se tiene un edificio de concreto reforzado
 fpc = 210 # kgf/cm²
 E_c = 15100*np.sqrt(fpc)*g*(100**2)/1000  # [kN/m²]
-N_PISOS = 3
-#%% CONSTANTES PARA MEJORAR LA LECTURA DEL CÓDIGO
-NL1, NL2, TIPO = 0, 1, 2     # Nodo local 1, Nodo local 2
-X, Y, TH       = 0, 1, 2     # TH = theta
-b, h           = 0, 1        # b = base, h = altura
+n_pisos = 3
+n_porticos = 4 # Número de pórticos en la dirección de análisis
+h_entrepiso = 3.4
+D_losa = 220+40*n_asignado  # kgf/m²
+D_cub = D_losa/2            # kgf/m²
+Lu_dirY = np.array([6,6])         # [m] Luces en dirección Y
+Lu_dirX = np.array([6.5, 7, 6.5]) # [m] Luces en dirección X
+LY = np.sum(Lu_dirY) # [m] Longitud total de la losa en dirección X
+LX = np.sum(Lu_dirX) # [m] Longitud total de la losa en dirección Y
+A_losa = LX*LY       # [m²]
+DeltaMAX = 3.4    # [cm]
+DeltaMAXmin = 3.3 # [cm]
+# Dimensiones de los elementos del pórtico np.array([b, h])
+COL = np.array([0.45, 0.5])
+VIG = np.array([0.3, 0.4])
+
+# Ciudad = Manizales, Grupo de uso = II, Suelo = D
+Av = 0.25   # A.2.3-2. Coeficiente de aceleración horizontal pico efectiva.
+Aa = 0.25   # A.2.3-2. Coeficiente de velocidad horizontal pico efectiva.
+Fa = 1.3    # A.2.4-3. Coeficiente de amplificación de la aceleración para periodos cortos.
+Fv = 1.9    # A.2.4-4. Coeficiente de amplificación de la aceleración en la zona de periodos intermedios.
+Coef_I = 1.10   # A.2.5-1. Coeficiente de importancia.
+
+# Parámetros dinámicos para una estructura con pórticos de concreto. 
+Ct    = 0.047  # A.2.5-1.  Coeficiente para el cálculo del periodo.
+alfa  = 0.90   # A.2.5-1.  Exponente para el cálculo del periodo.
+
+# Cálculo de periodos
+T_a = Ct*(h_entrepiso*n_pisos)**alfa  # [s] Periodo fundamental aproximado, A.4.2-3.
+T_0 = 0.1*(Av*Fv)/(Aa*Fa)   # [s] Periodo inicial.
+T_C = 0.48*(Av*Fv)/(Aa*Fa)  # [s] Periodo corto.
+T_L = 2.4*Fv                # [s] Periodo largo.        Figura A.2.6-1.
+
+# Aceleración para el periodo fundamental aproximado.
+if T_a < T_C:
+   Sa = 2.5*Aa*Fa*Coef_I
+elif T_a > T_L:
+   Sa = 1.2*Av*Fv*T_L*Coef_I/T_a**2
+else:
+   Sa = 1.2*Av*Fv*Coef_I/T_a
+# Valor del exponente k (minúscula)
+if T_a <= 0.5:
+   k = 1
+elif T_a > 2.5:
+   k = 2
+else:
+   k = 0.75+0.5*T_a
+
+# Gráfica del espectro de aceleraciones 
+t_espectro = np.linspace(0, 10, 100)
+sa_espectro = np.zeros_like(t_espectro)
+for t,i in zip(t_espectro,range(len(t_espectro))):
+   if t < T_C:
+      sa_espectro[i] = 2.5*Aa*Fa*Coef_I
+   elif t > T_L:
+      sa_espectro[i] = 1.2*Av*Fv*T_L*Coef_I/t**2
+   else:
+      sa_espectro[i] = 1.2*Av*Fv*Coef_I/t
+
+plt.figure()
+plt.plot(t_espectro, sa_espectro, '-k')
+plt.plot(T_a, Sa, '.r', linewidth=15)
+plt.title('Espectro de aceleraciones método FHE. Fig A.2.6-1')
+plt.xlabel(r'$T[s]$')
+plt.ylabel(r'$S_a[g]$')
+plt.text(1.1*T_a, Sa, r"$(T_a,S_a)$", fontsize=14, color='r')
+plt.grid()
+plt.show()
+
+print(f'Propiedades mecánicas del material:\n\
+   E= {E_c:.3f} kN/m²')
+print(f'Cargas muertas del pórtico:\n\
+   D Losa     = {D_losa} kgf/m²\n\
+   D Cubierta = {D_cub} kgf/m²\n')
+print(f'PERIODO Y ACELERACIÓN DE LA ESTRUCTURA: \n\
+   T_a = {T_a:.5f} s\n\
+   S_a = {Sa}(g)\n')
+
+#%% FUERZA HORIZONTAL EQUIVALENTE
+masa_pisos = np.array([])
+h_acumu = np.array([])
+for i in range(1,n_pisos+1):
+   h_acumu = np.append(h_acumu, i*h_entrepiso)
+   if i < n_pisos:
+      masa_pisos = np.append(masa_pisos, D_losa)
+   else:
+      masa_pisos = np.append(masa_pisos, D_cub)
+masa_pisos = masa_pisos*A_losa    # kgf
+masa_total = np.sum(masa_pisos)   # kgf
+Vs = masa_total*(Sa)     # kgf
+m_h_k = masa_pisos*(h_acumu**k) # kgf
+C_vx = m_h_k/np.sum(m_h_k)      # [%]
+FHE_piso = Vs*C_vx              # kgf
+print(f'MÉTODO DE LA FUERZA HORIZONTAL EQUIVALENTE:\n\
+(se desprecia la masa aportada por las vigas y columnas)\n\
+   MASA TOTAL     = {masa_total} kgf\n\
+   CORTANTE BASAL = {Vs:.3f} kg')
 
 #%% Se define la estructura
 xnod = np.array([[0, 0],   # coordenadas de cada nodo [x, y]
@@ -68,9 +179,6 @@ y2 = np.zeros(nbar)
 for e in range(nbar):
     x1[e] = xnod[LaG[e,NL1], X];  x2[e] = xnod[LaG[e,NL2], X]
     y1[e] = xnod[LaG[e,NL1], Y];  y2[e] = xnod[LaG[e,NL2], Y]
-# Dimensiones de los elementos del pórtico np.array([b, h])
-COL = np.array([0.40, 0.40])
-VIG = np.array([0.30, 0.40])
 
 #                  área       inercias_y       módulo de elasticidad
 #                  A(m^2)        I(m^4)           E(kN/m^2)
@@ -110,7 +218,7 @@ for n in range(nno):
     plt.text(xnod[n,X], xnod[n,Y], str(n+1))
     
 plt.axis('equal')
-plt.grid(b=True, which='both', color='0.65',linestyle='-')
+plt.grid(visible=True, which='both', color='0.65',linestyle='-')
 plt.title('Numeración de la estructura')
 plt.show()
 
@@ -172,12 +280,33 @@ K1 = K[ np.ix_( gdl_nc, gdl_c ) ]
 K2 = K[ np.ix_( gdl_c, gdl_nc ) ] 
 K3 = K[ np.ix_( gdl_c, gdl_c )  ]
 
-K_con = K0 - K1 @ np.linalg.inv(K3) @ K2
-
+K_condensada = (K0 - K1 @ np.linalg.inv(K3) @ K2)*n_porticos
 # Ahora lo que resta es sumar los grados de libertad por cada piso para así reducir la matriz
 # AQUÍ SE EVIDENCIA LA IMPORTANCIA DE NUMERAR EN ORDEN PRIMERO LAS COLUMNAS Y LUEGO LAS VIGAS
+K_c = reducir_matriz(K_condensada, n_pisos) # kN/m
+print('Sección columnas (b h):', COL,'\nSección vigas (b h):', VIG)
+print('MATRIZ DE RIGIDEZ CONDENSADA:')
+print(K_c)
 
-# %%
-df = pd.DataFrame(K_con)
+# Traigo las fuerzas del método de la fuerza horizontal equivalente
+# Cambio de unidades de kgf a kN
+F = FHE_piso*g/1000 # [kN]
+U = np.linalg.solve(K_c, F)*100 # [cm]
+
+print('\nDESPLAZAMIENTOS [cm]:')
+print(U)
+U_rel = U-np.append(0,U[:-1])
+derivas = U_rel/h_entrepiso
+print('DESPLAZAMIENTOS RELATIVOS [cm]:')
+print(U_rel)
+if DeltaMAXmin < max(U_rel) < DeltaMAX:
+   print("CUMPLE")
+else:
+   print("NO CUMPLE")
+print('DERIVAS [%]:')
+print(derivas)
+
+# # %%
+df = pd.DataFrame(K_condensada)
 filepath = 'MatrizK_con.xlsx'
 df.to_excel(filepath, index=False)
