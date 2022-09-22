@@ -5,6 +5,7 @@ Presentado por: Nelson Esteban Hernández Soto
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+import sympy as sp
 
 def reducir_matriz(K, n_pisos):
    # Primero se reduce por las filas
@@ -117,12 +118,12 @@ for i in range(1,n_pisos+1):
       masa_pisos = np.append(masa_pisos, D_losa)
    else:
       masa_pisos = np.append(masa_pisos, D_cub)
-masa_pisos = masa_pisos*A_losa    # kgf
-masa_total = np.sum(masa_pisos)   # kgf
-Vs = masa_total*(Sa)     # kgf
-m_h_k = masa_pisos*(h_acumu**k) # kgf
+masa_pisos = masa_pisos*A_losa*(g/1000)    # kN
+masa_total = np.sum(masa_pisos)   # kN
+Vs = masa_total*(Sa)     # kN
+m_h_k = masa_pisos*(h_acumu**k) # kN
 C_vx = m_h_k/np.sum(m_h_k)      # [%]
-FHE_piso = Vs*C_vx              # kgf
+FHE_piso = Vs*C_vx              # kN
 print(f'MÉTODO DE LA FUERZA HORIZONTAL EQUIVALENTE:\n\
 (se desprecia la masa aportada por las vigas y columnas)\n\
    MASA TOTAL     = {masa_total} kgf\n\
@@ -286,27 +287,65 @@ K_condensada = (K0 - K1 @ np.linalg.inv(K3) @ K2)*n_porticos
 K_c = reducir_matriz(K_condensada, n_pisos) # kN/m
 print('Sección columnas (b h):', COL,'\nSección vigas (b h):', VIG)
 print('MATRIZ DE RIGIDEZ CONDENSADA:')
-print(K_c)
+print(K_c.round(3))
 
 # Traigo las fuerzas del método de la fuerza horizontal equivalente
 # Cambio de unidades de kgf a kN
-F = FHE_piso*g/1000 # [kN]
+F = FHE_piso                    # [kN]
 U = np.linalg.solve(K_c, F)*100 # [cm]
 
 print('\nDESPLAZAMIENTOS [cm]:')
-print(U)
+print(U.round(3))
 U_rel = U-np.append(0,U[:-1])
 derivas = U_rel/h_entrepiso
 print('DESPLAZAMIENTOS RELATIVOS [cm]:')
-print(U_rel)
+print(U_rel.round(3))
 if DeltaMAXmin < max(U_rel) < DeltaMAX:
    print("CUMPLE")
 else:
    print("NO CUMPLE")
 print('DERIVAS [%]:')
-print(derivas)
+print(derivas.round(3))
+
+# %% SOLUCIÓN MODAL PARA EL CASO NO AMORTIGUADO
+M = np.diag(masa_pisos/g) # kN*s²/m
+
+# Variables simbólicas.
+lam, ome, fi, alf = sp.symbols('lambda, omega, Phi, alpha')
+
+# Polinomio caracterísitco.
+# lam = ome^2
+poli_car = sp.det(sp.Matrix(K_c - lam*M))
+
+# Solución de los lambdas, 
+lams = np.sort(np.array([ float( sp.re( sp.solve( poli_car, lam )[0]) ),
+                          float( sp.re( sp.solve( poli_car, lam )[1]) ),
+                          float( sp.re( sp.solve( poli_car, lam )[2]) )]
+                        ))
+
+# =============================================================================
+#                   Cálculo de vibraciones, frecuencias y periodos
+# ============================================================================= 
+
+wwi = np.sqrt(lams)  # [rad/s]   Vector de frecuencias angulares.       
+Tt  = 2*np.pi/wwi    # [s]       Vector de periodos de la estructura.
+ff  = 1/Tt           # [Hz]      Vector de frecuencias.
+
+# -----------------------------------------------------------------------------
+print("\nVibraciones, frecuencias y periodos.")
+print(f">>> {sp.pretty(lam)}: Soluciones {sp.pretty(lam)} del polinomio.")
+print(f">>> {sp.pretty(ome)}: Frecuencias angulares {sp.pretty(ome)} de la edificación.")
+print(">>> T: Periodos T de la edificación.")
+print(">>> f: Frecuencias f de la edificación.\n")
+
+tabla_vfp = pd.DataFrame(
+    data = np.c_[lams.round(5), wwi.round(5), Tt.round(5), ff.round(5)],
+    index = np.arange(n_pisos)+1,
+    columns = [f"{sp.pretty(lam)}", f"{sp.pretty(ome)} [rad/s]", "T [s]", "f [Hz]"]
+)
+print(tabla_vfp)
 
 # # %%
-df = pd.DataFrame(K_condensada)
-filepath = 'MatrizK_con.xlsx'
-df.to_excel(filepath, index=False)
+# df = pd.DataFrame(K_condensada)
+# filepath = 'MatrizK_con.xlsx'
+# df.to_excel(filepath, index=False)
