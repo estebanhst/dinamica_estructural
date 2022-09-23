@@ -48,8 +48,8 @@ COL = np.array([0.45, 0.5])
 VIG = np.array([0.3, 0.4])
 
 # Ciudad = Manizales, Grupo de uso = II, Suelo = D
-Av = 0.25   # A.2.3-2. Coeficiente de aceleración horizontal pico efectiva.
-Aa = 0.25   # A.2.3-2. Coeficiente de velocidad horizontal pico efectiva.
+Aa = 0.25   # A.2.3-2. Coeficiente de aceleración horizontal pico efectiva.
+Av = 0.25   # A.2.3-2. Coeficiente de velocidad horizontal pico efectiva.
 Fa = 1.3    # A.2.4-3. Coeficiente de amplificación de la aceleración para periodos cortos.
 Fv = 1.9    # A.2.4-4. Coeficiente de amplificación de la aceleración en la zona de periodos intermedios.
 Coef_I = 1.10   # A.2.5-1. Coeficiente de importancia.
