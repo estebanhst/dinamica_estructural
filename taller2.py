@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import sympy as sp
 
+plt.style.use('ggplot')
+
 def reducir_matriz(K, n_pisos):
    # Primero se reduce por las filas
    gdl = np.shape(K)[0]
@@ -92,12 +94,12 @@ for t,i in zip(t_espectro,range(len(t_espectro))):
 
 plt.figure()
 plt.plot(t_espectro, sa_espectro, '-k')
-plt.plot(T_a, Sa, '.r', linewidth=15)
-plt.title('Espectro de aceleraciones método FHE. Fig A.2.6-1')
-plt.xlabel(r'$T[s]$')
+plt.plot(T_a, Sa, '.b', ms=10)
+plt.title('Espectro de aceleraciones A.2 NSR-10')
+plt.xlabel(r'$T\quad [s]$')
 plt.ylabel(r'$S_a[g]$')
-plt.text(1.1*T_a, Sa, r"$(T_a,S_a)$", fontsize=14, color='r')
-plt.grid()
+plt.text(1.1*T_a, Sa, r"$(T_a,S_a)$", fontsize=10, color='b')
+plt.grid(visible=True)
 plt.show()
 
 print(f'Propiedades mecánicas del material:\n\
@@ -207,7 +209,7 @@ for e in range(nbar):
 #%% Se dibuja la estructura junto con su numeración
 plt.figure(1)
 for e in range(nbar):
-   plt.plot(xnod[LaG[e,:],X], xnod[LaG[e,:],Y], 'b-')
+   plt.plot(xnod[LaG[e,:],X], xnod[LaG[e,:],Y], 'k-')
    
    # Calculo la posición del centro de gravedad de la barra
    cgx = (xnod[LaG[e,NL1],X] + xnod[LaG[e,NL2],X])/2
@@ -216,11 +218,11 @@ for e in range(nbar):
 
 plt.plot(xnod[:,X], xnod[:,Y], 'ro')
 for n in range(nno):
-    plt.text(xnod[n,X], xnod[n,Y], str(n+1))
+    plt.text(xnod[n,X], xnod[n,Y], str(n+1), color='k')
     
 plt.axis('equal')
 plt.grid(visible=True, which='both', color='0.65',linestyle='-')
-plt.title('Numeración de la estructura')
+plt.title('Numeración del pórtico')
 plt.show()
 
 #%% ensamblo la matriz de rigidez global
@@ -385,19 +387,19 @@ fig.set_size_inches(10, 8)
 fig.supylabel('Altura [m]')
 fig.suptitle('Desplazamientos y derivas')
 ax = fig.add_subplot(1,2,1)
-ax.grid()
+ax.grid(visible=True)
 ax.plot(graf_U, graf_estruct, '--b')
 ax.plot(np.zeros(n_pisos+1), graf_estruct, '-k')
 ax.plot(np.zeros(n_pisos+1), graf_estruct, 'og')
-ax.plot(0,0,'_k', ms=100)
+ax.plot(0,0,'_k', markersize=100)
 ax.set_title(f"Desplazamientos [cm]")
 ax = fig.add_subplot(1,2,2)
-ax.grid()
+ax.grid(visible=True)
 ax.plot(graf_Urel, graf_estruct, ':r')
 ax.plot(np.zeros(n_pisos+1), graf_estruct, '-k')
 ax.plot(np.zeros(n_pisos+1), graf_estruct, 'og')
 ax.plot(np.zeros(n_pisos+1)+DeltaMAX, graf_estruct, '-.g', label=r'$\Delta_{max}$')
-ax.plot(0,0,'_k', ms=100)
+ax.plot(0,0,'_k', markersize=100)
 ax.legend()
 ax.set_title(f"Derivas [cm]")
 plt.show()
@@ -407,11 +409,11 @@ fig.set_size_inches(10, 8)
 fig.supylabel('Altura [m]')
 for i in range(n_pisos):
    ax = fig.add_subplot(1,3,1+i)
-   ax.grid()
+   ax.grid(visible=True)
    ax.plot(graf_Phi[:,i], graf_estruct, ':b')
    ax.plot(np.zeros(n_pisos+1), graf_estruct, '-k')
    ax.plot(np.zeros(n_pisos+1), graf_estruct, 'og')
-   ax.plot(0,0,'_k', ms=100)
+   ax.plot(0,0,'_k', markersize=100)
    ax.set_title(f"Modo {i+1}: "+r"$\omega$"+f"{i+1} = {wwi[i].round(3)} [rad/s]")
    lim = np.max(abs(Phi))+0.05
    ax.set_xlim([-lim, lim])
