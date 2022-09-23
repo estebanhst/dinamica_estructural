@@ -345,7 +345,82 @@ tabla_vfp = pd.DataFrame(
 )
 print(tabla_vfp)
 
+# Periodo de Rayleigh
+T_Rayleigh = 2*np.pi*np.sqrt(np.sum(M*(U/100)**2)/np.sum(F*(U/100)))
+print(f'T Rayleigh = {T_Rayleigh:.5f} s')
 # # %%
+
+# MATRIZ MODAL
+Phi = np.zeros((n_pisos, n_pisos))
+
+for j in range(n_pisos):
+   # Se calcula el vector de amplitudes del movimiento armónico
+   Phi_j = np.linalg.eigh(K_c-lams[j]*M)[1][:,j]
+   # Norma respecto a la masa
+   r_j = Phi_j.T @ M @ Phi_j
+   # Se agrega el vector normalizado en la matriz modal
+   Phi[:,j] = Phi_j/np.sqrt(r_j)
+
+compr_lams = Phi.T @ K_c @ Phi
+compr_Id = Phi.T @ M @ Phi
+
+print(compr_lams.round(3))
+print(compr_Id.round(3))
+
+# PARTICIPACIÓN MODAL
+alfa = Phi.T @ M @ np.ones((n_pisos,1))
+M_mod_efectiva = alfa**2/np.sum(alfa**2)
+pctj_participacion = M_mod_efectiva*100
+
+print(pctj_participacion.round(2))
+
+# GRÁFICO DE LOS MODOS Y DESPLAZAMIENTOS
+graf_Phi = np.concatenate((np.zeros((1,n_pisos)),Phi))
+graf_estruct = np.insert(h_acumu,0,0)
+graf_U = np.insert(U,0,0)
+graf_Urel = np.insert(U_rel,0,0)
+
+fig = plt.figure()
+fig.set_size_inches(10, 8)
+fig.supylabel('Altura [m]')
+fig.suptitle('Desplazamientos y derivas')
+ax = fig.add_subplot(1,2,1)
+ax.grid()
+ax.plot(graf_U, graf_estruct, '--b')
+ax.plot(np.zeros(n_pisos+1), graf_estruct, '-k')
+ax.plot(np.zeros(n_pisos+1), graf_estruct, 'og')
+ax.plot(0,0,'_k', ms=100)
+ax.set_title(f"Desplazamientos [cm]")
+ax = fig.add_subplot(1,2,2)
+ax.grid()
+ax.plot(graf_Urel, graf_estruct, ':r')
+ax.plot(np.zeros(n_pisos+1), graf_estruct, '-k')
+ax.plot(np.zeros(n_pisos+1), graf_estruct, 'og')
+ax.plot(np.zeros(n_pisos+1)+DeltaMAX, graf_estruct, '-.g', label=r'$\Delta_{max}$')
+ax.plot(0,0,'_k', ms=100)
+ax.legend()
+ax.set_title(f"Derivas [cm]")
+plt.show()
+
+fig = plt.figure()
+fig.set_size_inches(10, 8)
+fig.supylabel('Altura [m]')
+for i in range(n_pisos):
+   ax = fig.add_subplot(1,3,1+i)
+   ax.grid()
+   ax.plot(graf_Phi[:,i], graf_estruct, ':b')
+   ax.plot(np.zeros(n_pisos+1), graf_estruct, '-k')
+   ax.plot(np.zeros(n_pisos+1), graf_estruct, 'og')
+   ax.plot(0,0,'_k', ms=100)
+   ax.set_title(f"Modo {i+1}: "+r"$\omega$"+f"{i+1} = {wwi[i].round(3)} [rad/s]")
+   lim = np.max(abs(Phi))+0.05
+   ax.set_xlim([-lim, lim])
+plt.show()
+
+
+
 # df = pd.DataFrame(K_condensada)
 # filepath = 'MatrizK_con.xlsx'
 # df.to_excel(filepath, index=False)
+
+# %%
