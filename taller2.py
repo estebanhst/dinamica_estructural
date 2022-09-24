@@ -31,8 +31,8 @@ b, h           = 0, 1        # b = base, h = altura
 n_asignado = 7
 g = 9.8 # m/s²
 # Se asume que se tiene un edificio de concreto reforzado
-fpc = 210 # kgf/cm²
-E_c = 15100*np.sqrt(fpc)*g*(100**2)/1000  # [kN/m²]
+fpc = 21 # MPa
+E_c = 4700*np.sqrt(fpc)*1000  # [kN/m²]
 n_pisos = 3
 n_porticos = 4 # Número de pórticos en la dirección de análisis
 h_entrepiso = 3.4
