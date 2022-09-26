@@ -1,11 +1,18 @@
 '''TRABAJO 2/3 DINÁMICA DE ESTRUCTURAS
 Presentado por: Nelson Esteban Hernández Soto
+Lunes 26 de septiembre de 2022
+Próximamente se espera optimizar más este código e implementar más funciones
+Ya se verificó respecto a los códigos de Juan Pablo
+Es importante aclarar que la numeración de la matriz de masa y de rigidez es primera fila/columna, piso 1 y así
+Aquí se puede ejecutar el código online:
+https://colab.research.google.com/drive/15tB71zPQ4rjjX5QPF9--46UPR_TPqk72?usp=sharing
 '''
 #%% INICIO
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import sympy as sp
+
 
 plt.style.use('ggplot')
 
@@ -128,8 +135,8 @@ C_vx = m_h_k/np.sum(m_h_k)      # [%]
 FHE_piso = Vs*C_vx              # kN
 print(f'MÉTODO DE LA FUERZA HORIZONTAL EQUIVALENTE:\n\
 (se desprecia la masa aportada por las vigas y columnas)\n\
-   MASA TOTAL     = {masa_total} kgf\n\
-   CORTANTE BASAL = {Vs:.3f} kg')
+   MASA TOTAL     = {masa_total:.3f} kN\n\
+   CORTANTE BASAL = {Vs:.3f} kN')
 
 #%% Se define la estructura
 xnod = np.array([[0, 0],   # coordenadas de cada nodo [x, y]
@@ -325,10 +332,7 @@ lams = np.sort(np.array([ float( sp.re( sp.solve( poli_car, lam )[0]) ),
                           float( sp.re( sp.solve( poli_car, lam )[2]) )]
                         ))
 
-# =============================================================================
-#                   Cálculo de vibraciones, frecuencias y periodos
-# ============================================================================= 
-
+# Cálculo de vibraciones, frecuencias y periodos
 wwi = np.sqrt(lams)  # [rad/s]   Vector de frecuencias angulares.       
 Tt  = 2*np.pi/wwi    # [s]       Vector de periodos de la estructura.
 ff  = 1/Tt           # [Hz]      Vector de frecuencias.
@@ -363,17 +367,25 @@ for j in range(n_pisos):
    # Se agrega el vector normalizado en la matriz modal
    Phi[:,j] = Phi_j/np.sqrt(r_j)
 
+print('MATRIZ MODAL')
+print(Phi)
 compr_lams = Phi.T @ K_c @ Phi
 compr_Id = Phi.T @ M @ Phi
-
+print('Comprobación frecuencias')
 print(compr_lams.round(3))
+print('Comprobación identidad')
 print(compr_Id.round(3))
 
 # PARTICIPACIÓN MODAL
 alfa = Phi.T @ M @ np.ones((n_pisos,1))
-M_mod_efectiva = alfa**2/np.sum(alfa**2)
-pctj_participacion = M_mod_efectiva*100
+M_mod_efectiva = alfa**2
+participacion_masa = M_mod_efectiva/np.sum(M_mod_efectiva)
+pctj_participacion = participacion_masa*100
 
+
+print('Masa modal efectiva')
+print(M_mod_efectiva.round(2))
+print('Porcentaje de participación de masa')
 print(pctj_participacion.round(2))
 
 # GRÁFICO DE LOS MODOS Y DESPLAZAMIENTOS
@@ -421,8 +433,17 @@ plt.show()
 
 
 
-# df = pd.DataFrame(K_condensada)
-# filepath = 'MatrizK_con.xlsx'
-# df.to_excel(filepath, index=False)
+# df1 = pd.DataFrame(K_c)
+# df2 = pd.DataFrame(np.stack((U,U_rel)))
+# df3 = pd.DataFrame(wwi)
+# df4 = pd.DataFrame(Phi)
+# df5 = pd.DataFrame(M_mod_efectiva)
+# filepath = 'Datos.xlsx'
+# with pd.ExcelWriter(filepath, mode='a') as writer:
+#    df1.to_excel(writer, "Matriz de rigidez", index=False)
+#    df2.to_excel(writer, "Desplazamientos y derivas", index=False)
+#    df3.to_excel(writer, "Frecuencias", index=False)
+#    df4.to_excel(writer, "Matriz modal", index=False)
+#    df5.to_excel(writer, "Masa efectiva", index=False)
 
 # %%
