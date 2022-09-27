@@ -1,13 +1,11 @@
 '''TRABAJO 2/3 DINÁMICA DE ESTRUCTURAS
-Presentado por: Nelson Esteban Hernández Soto
+Heidy Paola Rodríguez Quevedo 
 '''
-#%% INICIO
+#%% DESARROLLO 
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import sympy as sp
-
-plt.style.use('ggplot')
 
 def reducir_matriz(K, n_pisos):
    # Primero se reduce por las filas
@@ -28,11 +26,11 @@ NL1, NL2, TIPO = 0, 1, 2     # Nodo local 1, Nodo local 2
 X, Y, TH       = 0, 1, 2     # TH = theta
 b, h           = 0, 1        # b = base, h = altura
 
-n_asignado = 7
+n_asignado = 16
 g = 9.8 # m/s²
 # Se asume que se tiene un edificio de concreto reforzado
-fpc = 21 # kgf/cm²
-E_c = 4700*np.sqrt(fpc)*(1000)  # [kN/m²]
+fpc = 210 # kgf/cm²
+E_c = 15100*np.sqrt(fpc)*g*(100**2)/1000  # [kN/m²]
 n_pisos = 3
 n_porticos = 4 # Número de pórticos en la dirección de análisis
 h_entrepiso = 3.4
@@ -46,12 +44,12 @@ A_losa = LX*LY       # [m²]
 DeltaMAX = 3.4    # [cm]
 DeltaMAXmin = 3.3 # [cm]
 # Dimensiones de los elementos del pórtico np.array([b, h])
-COL = np.array([0.3, 0.3])
-VIG = np.array([0.3, 0.3])
+COL = np.array([0.5, 0.55])
+VIG = np.array([0.4, 0.45])
 
 # Ciudad = Manizales, Grupo de uso = II, Suelo = D
-Aa = 0.25   # A.2.3-2. Coeficiente de aceleración horizontal pico efectiva.
-Av = 0.25   # A.2.3-2. Coeficiente de velocidad horizontal pico efectiva.
+Av = 0.25   # A.2.3-2. Coeficiente de aceleración horizontal pico efectiva.
+Aa = 0.25   # A.2.3-2. Coeficiente de velocidad horizontal pico efectiva.
 Fa = 1.3    # A.2.4-3. Coeficiente de amplificación de la aceleración para periodos cortos.
 Fv = 1.9    # A.2.4-4. Coeficiente de amplificación de la aceleración en la zona de periodos intermedios.
 Coef_I = 1.10   # A.2.5-1. Coeficiente de importancia.
@@ -94,12 +92,12 @@ for t,i in zip(t_espectro,range(len(t_espectro))):
 
 plt.figure()
 plt.plot(t_espectro, sa_espectro, '-k')
-plt.plot(T_a, Sa, '.b', ms=10)
-plt.title('Espectro de aceleraciones A.2 NSR-10')
-plt.xlabel(r'$T\quad [s]$')
+plt.plot(T_a, Sa, '.r', linewidth=15)
+plt.title('Espectro de aceleraciones método FHE. Fig A.2.6-1')
+plt.xlabel(r'$T[s]$')
 plt.ylabel(r'$S_a[g]$')
-plt.text(1.1*T_a, Sa, r"$(T_a,S_a)$", fontsize=10, color='b')
-plt.grid(visible=True)
+plt.text(1.1*T_a, Sa, r"$(T_a,S_a)$", fontsize=14, color='r')
+plt.grid()
 plt.show()
 
 print(f'Propiedades mecánicas del material:\n\
@@ -128,7 +126,7 @@ C_vx = m_h_k/np.sum(m_h_k)      # [%]
 FHE_piso = Vs*C_vx              # kN
 print(f'MÉTODO DE LA FUERZA HORIZONTAL EQUIVALENTE:\n\
 (se desprecia la masa aportada por las vigas y columnas)\n\
-   MASA TOTAL     = {masa_total} kgf\n\
+   MASA TOTAL     = {masa_total:.3f} kgf\n\
    CORTANTE BASAL = {Vs:.3f} kg')
 
 #%% Se define la estructura
@@ -209,7 +207,7 @@ for e in range(nbar):
 #%% Se dibuja la estructura junto con su numeración
 plt.figure(1)
 for e in range(nbar):
-   plt.plot(xnod[LaG[e,:],X], xnod[LaG[e,:],Y], 'k-')
+   plt.plot(xnod[LaG[e,:],X], xnod[LaG[e,:],Y], 'b-')
    
    # Calculo la posición del centro de gravedad de la barra
    cgx = (xnod[LaG[e,NL1],X] + xnod[LaG[e,NL2],X])/2
@@ -218,11 +216,11 @@ for e in range(nbar):
 
 plt.plot(xnod[:,X], xnod[:,Y], 'ro')
 for n in range(nno):
-    plt.text(xnod[n,X], xnod[n,Y], str(n+1), color='k')
+    plt.text(xnod[n,X], xnod[n,Y], str(n+1))
     
 plt.axis('equal')
 plt.grid(visible=True, which='both', color='0.65',linestyle='-')
-plt.title('Numeración del pórtico')
+plt.title('Numeración de la estructura')
 plt.show()
 
 #%% ensamblo la matriz de rigidez global
@@ -387,19 +385,19 @@ fig.set_size_inches(10, 8)
 fig.supylabel('Altura [m]')
 fig.suptitle('Desplazamientos y derivas')
 ax = fig.add_subplot(1,2,1)
-ax.grid(visible=True)
+ax.grid()
 ax.plot(graf_U, graf_estruct, '--b')
 ax.plot(np.zeros(n_pisos+1), graf_estruct, '-k')
 ax.plot(np.zeros(n_pisos+1), graf_estruct, 'og')
-ax.plot(0,0,'_k', markersize=100)
+ax.plot(0,0,'_k', ms=100)
 ax.set_title(f"Desplazamientos [cm]")
 ax = fig.add_subplot(1,2,2)
-ax.grid(visible=True)
+ax.grid()
 ax.plot(graf_Urel, graf_estruct, ':r')
 ax.plot(np.zeros(n_pisos+1), graf_estruct, '-k')
 ax.plot(np.zeros(n_pisos+1), graf_estruct, 'og')
 ax.plot(np.zeros(n_pisos+1)+DeltaMAX, graf_estruct, '-.g', label=r'$\Delta_{max}$')
-ax.plot(0,0,'_k', markersize=100)
+ax.plot(0,0,'_k', ms=100)
 ax.legend()
 ax.set_title(f"Derivas [cm]")
 plt.show()
@@ -409,11 +407,11 @@ fig.set_size_inches(10, 8)
 fig.supylabel('Altura [m]')
 for i in range(n_pisos):
    ax = fig.add_subplot(1,3,1+i)
-   ax.grid(visible=True)
+   ax.grid()
    ax.plot(graf_Phi[:,i], graf_estruct, ':b')
    ax.plot(np.zeros(n_pisos+1), graf_estruct, '-k')
    ax.plot(np.zeros(n_pisos+1), graf_estruct, 'og')
-   ax.plot(0,0,'_k', markersize=100)
+   ax.plot(0,0,'_k', ms=100)
    ax.set_title(f"Modo {i+1}: "+r"$\omega$"+f"{i+1} = {wwi[i].round(3)} [rad/s]")
    lim = np.max(abs(Phi))+0.05
    ax.set_xlim([-lim, lim])
