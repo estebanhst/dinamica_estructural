@@ -1,18 +1,16 @@
 '''TRABAJO 2/3 DINÁMICA DE ESTRUCTURAS
-Presentado por: Nelson Esteban Hernández Soto
-Lunes 26 de septiembre de 2022
-Próximamente se espera optimizar más este código e implementar más funciones
+Presentado por: 
+    Nelson Esteban Hernández Soto
+    Heidy Paola Rodríguez Quevedo
+Sábado 01 de octubre de 2022
 Ya se verificó respecto a los códigos de Juan Pablo
 Es importante aclarar que la numeración de la matriz de masa y de rigidez es primera fila/columna, piso 1 y así
-Aquí se puede ejecutar el código online:
-https://colab.research.google.com/drive/15tB71zPQ4rjjX5QPF9--46UPR_TPqk72?usp=sharing
 '''
 #%% INICIO
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import sympy as sp
-
 
 plt.style.use('ggplot')
 
@@ -29,6 +27,73 @@ def reducir_matriz(K, n_pisos):
       for j in range(int(gdl/n_pisos)):
          K_r[:,i] += K_f[:,i+3*j]
    return K_r
+def espectro_NSR10(param_loc, param_din, h, grafica = False):
+    '''
+    param_loc -> diccionario
+    Aa  :   # A.2.3-2. Coeficiente de aceleración horizontal pico efectiva.
+    Av  :   # A.2.3-2. Coeficiente de velocidad horizontal pico efectiva.
+    Fa  :   # A.2.4-3. Coeficiente de amplificación de la aceleración para periodos cortos.
+    Fv  :   # A.2.4-4. Coeficiente de amplificación de la aceleración en la zona de periodos intermedios.
+    I   :   # A.2.5-1. Coeficiente de importancia.
+    
+    param_din -> diccionario
+    Ct  :   # A.2.5-1.  Coeficiente para el cálculo del periodo.
+    alfa:   # A.2.5-1.  Exponente para el cálculo del periodo.
+    
+    grafica : boolean (True or False)
+    '''
+    Aa, Av, Fa, Fv, I = param_loc.values()
+    Ct, alfa = param_din.values()
+
+    # Cálculo de periodos
+    T_a = Ct*(h**alfa)  # [s] Periodo fundamental aproximado, A.4.2-3.
+    T_0 = 0.1*(Av*Fv)/(Aa*Fa)   # [s] Periodo inicial.
+    T_C = 0.48*(Av*Fv)/(Aa*Fa)  # [s] Periodo corto.
+    T_L = 2.4*Fv                # [s] Periodo largo.        Figura A.2.6-1.
+
+    # Aceleración para el periodo fundamental aproximado.
+    if T_a < T_C:
+        S_a = 2.5*Aa*Fa*I
+    elif T_a > T_L:
+        S_a = 1.2*Av*Fv*T_L*I/T_a**2
+    else:
+        S_a = 1.2*Av*Fv*I/T_a
+    # Valor del exponente
+    if T_a <= 0.5:
+        k = 1
+    elif T_a > 2.5:
+        k = 2
+    else:
+        k = 0.75+0.5*T_a
+    resultados = {
+        'S_a': S_a,
+        'T_a': T_a,
+        'k': k,
+        'T_0': T_0,
+        'T_C': T_C,
+        'T_L': T_L
+    }
+    if grafica:
+        # Gráfica del espectro de aceleraciones 
+        t_espectro = np.linspace(0, 10, 100)
+        sa_espectro = np.zeros_like(t_espectro)
+        for t,i in zip(t_espectro,range(len(t_espectro))):
+            if t < T_C:
+                sa_espectro[i] = 2.5*Aa*Fa*I
+            elif t > T_L:
+                sa_espectro[i] = 1.2*Av*Fv*T_L*I/t**2
+            else:
+                sa_espectro[i] = 1.2*Av*Fv*I/t
+        plt.figure()
+        plt.plot(t_espectro, sa_espectro, '-k')
+        plt.plot(T_a, S_a, '.b', ms=10)
+        plt.title('Espectro de aceleraciones A.2 NSR-10')
+        plt.xlabel(r'$T\quad [s]$')
+        plt.ylabel(r'$S_a[g]$')
+        plt.text(1.1*T_a, S_a, r"$(T_a,S_a)$", fontsize=10, color='b')
+        plt.grid(visible=True)
+        plt.show()
+    return resultados
 
 #%% CONSTANTES PARA MEJORAR LA LECTURA DEL CÓDIGO
 NL1, NL2, TIPO = 0, 1, 2     # Nodo local 1, Nodo local 2
@@ -53,62 +118,29 @@ A_losa = LX*LY       # [m²]
 DeltaMAX = 3.4    # [cm]
 DeltaMAXmin = 3.3 # [cm]
 # Dimensiones de los elementos del pórtico np.array([b, h])
-COL = np.array([0.3, 0.3])
-VIG = np.array([0.3, 0.3])
+COL = np.array([0.45, 0.5])
+VIG = np.array([0.3, 0.4])
 
 # Ciudad = Manizales, Grupo de uso = II, Suelo = D
-Aa = 0.25   # A.2.3-2. Coeficiente de aceleración horizontal pico efectiva.
-Av = 0.25   # A.2.3-2. Coeficiente de velocidad horizontal pico efectiva.
-Fa = 1.3    # A.2.4-3. Coeficiente de amplificación de la aceleración para periodos cortos.
-Fv = 1.9    # A.2.4-4. Coeficiente de amplificación de la aceleración en la zona de periodos intermedios.
-Coef_I = 1.10   # A.2.5-1. Coeficiente de importancia.
-
+param_loc = {
+    'Aa':0.25,
+    'Av':0.25,
+    'Fa': 1.3,
+    'Fv': 1.9,
+    'I': 1.10
+}
 # Parámetros dinámicos para una estructura con pórticos de concreto. 
-Ct    = 0.047  # A.2.5-1.  Coeficiente para el cálculo del periodo.
-alfa  = 0.90   # A.2.5-1.  Exponente para el cálculo del periodo.
+param_din = {
+    'Ct': 0.047,
+    'alfa': 0.90
+}
 
-# Cálculo de periodos
-T_a = Ct*(h_entrepiso*n_pisos)**alfa  # [s] Periodo fundamental aproximado, A.4.2-3.
-T_0 = 0.1*(Av*Fv)/(Aa*Fa)   # [s] Periodo inicial.
-T_C = 0.48*(Av*Fv)/(Aa*Fa)  # [s] Periodo corto.
-T_L = 2.4*Fv                # [s] Periodo largo.        Figura A.2.6-1.
+# [Sa, T_a, k, T_0, T_C, T_L]
+espectro_norma_x = espectro_NSR10(param_loc, param_din, h_entrepiso*n_pisos, True)
+#%%
 
-# Aceleración para el periodo fundamental aproximado.
-if T_a < T_C:
-   Sa = 2.5*Aa*Fa*Coef_I
-elif T_a > T_L:
-   Sa = 1.2*Av*Fv*T_L*Coef_I/T_a**2
-else:
-   Sa = 1.2*Av*Fv*Coef_I/T_a
-# Valor del exponente k (minúscula)
-if T_a <= 0.5:
-   k = 1
-elif T_a > 2.5:
-   k = 2
-else:
-   k = 0.75+0.5*T_a
-
-# Gráfica del espectro de aceleraciones 
-t_espectro = np.linspace(0, 10, 100)
-sa_espectro = np.zeros_like(t_espectro)
-for t,i in zip(t_espectro,range(len(t_espectro))):
-   if t < T_C:
-      sa_espectro[i] = 2.5*Aa*Fa*Coef_I
-   elif t > T_L:
-      sa_espectro[i] = 1.2*Av*Fv*T_L*Coef_I/t**2
-   else:
-      sa_espectro[i] = 1.2*Av*Fv*Coef_I/t
-
-plt.figure()
-plt.plot(t_espectro, sa_espectro, '-k')
-plt.plot(T_a, Sa, '.b', ms=10)
-plt.title('Espectro de aceleraciones A.2 NSR-10')
-plt.xlabel(r'$T\quad [s]$')
-plt.ylabel(r'$S_a[g]$')
-plt.text(1.1*T_a, Sa, r"$(T_a,S_a)$", fontsize=10, color='b')
-plt.grid(visible=True)
-plt.show()
-
+T_a = espectro_norma_x['T_a']
+S_a = espectro_norma_x['S_a']
 print(f'Propiedades mecánicas del material:\n\
    E= {E_c:.3f} kN/m²')
 print(f'Cargas muertas del pórtico:\n\
@@ -116,7 +148,7 @@ print(f'Cargas muertas del pórtico:\n\
    D Cubierta = {D_cub} kgf/m²\n')
 print(f'PERIODO Y ACELERACIÓN DE LA ESTRUCTURA: \n\
    T_a = {T_a:.5f} s\n\
-   S_a = {Sa}(g)\n')
+   S_a = {S_a:.5f}(g)\n')
 
 #%% FUERZA HORIZONTAL EQUIVALENTE
 masa_pisos = np.array([])
@@ -129,7 +161,7 @@ for i in range(1,n_pisos+1):
       masa_pisos = np.append(masa_pisos, D_cub)
 masa_pisos = masa_pisos*A_losa*(g/1000)    # kN
 masa_total = np.sum(masa_pisos)   # kN
-Vs = masa_total*(Sa)     # kN
+Vs = masa_total*(S_a)     # kN
 m_h_k = masa_pisos*(h_acumu**k) # kN
 C_vx = m_h_k/np.sum(m_h_k)      # [%]
 FHE_piso = Vs*C_vx              # kN
