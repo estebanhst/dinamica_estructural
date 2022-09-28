@@ -1,20 +1,11 @@
 '''TRABAJO 2/3 DINÁMICA DE ESTRUCTURAS
-Presentado por: Nelson Esteban Hernández Soto
-Lunes 26 de septiembre de 2022
-Próximamente se espera optimizar más este código e implementar más funciones
-Ya se verificó respecto a los códigos de Juan Pablo
-Es importante aclarar que la numeración de la matriz de masa y de rigidez es primera fila/columna, piso 1 y así
-Aquí se puede ejecutar el código online:
-https://colab.research.google.com/drive/15tB71zPQ4rjjX5QPF9--46UPR_TPqk72?usp=sharing
+Heidy Paola Rodríguez Quevedo 
 '''
-#%% INICIO
+#%% DESARROLLO 
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import sympy as sp
-
-
-plt.style.use('ggplot')
 
 def reducir_matriz(K, n_pisos):
    # Primero se reduce por las filas
@@ -35,11 +26,11 @@ NL1, NL2, TIPO = 0, 1, 2     # Nodo local 1, Nodo local 2
 X, Y, TH       = 0, 1, 2     # TH = theta
 b, h           = 0, 1        # b = base, h = altura
 
-n_asignado = 7
+n_asignado = 16
 g = 9.8 # m/s²
 # Se asume que se tiene un edificio de concreto reforzado
-fpc = 21 # MPa
-E_c = 4700*np.sqrt(fpc)*1000  # [kN/m²]
+fpc = 210 # kgf/cm²
+E_c = 15100*np.sqrt(fpc)*g*(100**2)/1000  # [kN/m²]
 n_pisos = 3
 n_porticos = 4 # Número de pórticos en la dirección de análisis
 h_entrepiso = 3.4
@@ -53,12 +44,12 @@ A_losa = LX*LY       # [m²]
 DeltaMAX = 3.4    # [cm]
 DeltaMAXmin = 3.3 # [cm]
 # Dimensiones de los elementos del pórtico np.array([b, h])
-COL = np.array([0.3, 0.3])
-VIG = np.array([0.3, 0.3])
+COL = np.array([0.5, 0.55])
+VIG = np.array([0.4, 0.45])
 
 # Ciudad = Manizales, Grupo de uso = II, Suelo = D
-Aa = 0.25   # A.2.3-2. Coeficiente de aceleración horizontal pico efectiva.
-Av = 0.25   # A.2.3-2. Coeficiente de velocidad horizontal pico efectiva.
+Av = 0.25   # A.2.3-2. Coeficiente de aceleración horizontal pico efectiva.
+Aa = 0.25   # A.2.3-2. Coeficiente de velocidad horizontal pico efectiva.
 Fa = 1.3    # A.2.4-3. Coeficiente de amplificación de la aceleración para periodos cortos.
 Fv = 1.9    # A.2.4-4. Coeficiente de amplificación de la aceleración en la zona de periodos intermedios.
 Coef_I = 1.10   # A.2.5-1. Coeficiente de importancia.
@@ -101,12 +92,12 @@ for t,i in zip(t_espectro,range(len(t_espectro))):
 
 plt.figure()
 plt.plot(t_espectro, sa_espectro, '-k')
-plt.plot(T_a, Sa, '.b', ms=10)
-plt.title('Espectro de aceleraciones A.2 NSR-10')
-plt.xlabel(r'$T\quad [s]$')
+plt.plot(T_a, Sa, '.r', linewidth=15)
+plt.title('Espectro de aceleraciones método FHE. Fig A.2.6-1')
+plt.xlabel(r'$T[s]$')
 plt.ylabel(r'$S_a[g]$')
-plt.text(1.1*T_a, Sa, r"$(T_a,S_a)$", fontsize=10, color='b')
-plt.grid(visible=True)
+plt.text(1.1*T_a, Sa, r"$(T_a,S_a)$", fontsize=14, color='r')
+plt.grid()
 plt.show()
 
 print(f'Propiedades mecánicas del material:\n\
@@ -135,8 +126,8 @@ C_vx = m_h_k/np.sum(m_h_k)      # [%]
 FHE_piso = Vs*C_vx              # kN
 print(f'MÉTODO DE LA FUERZA HORIZONTAL EQUIVALENTE:\n\
 (se desprecia la masa aportada por las vigas y columnas)\n\
-   MASA TOTAL     = {masa_total:.3f} kN\n\
-   CORTANTE BASAL = {Vs:.3f} kN')
+   MASA TOTAL     = {masa_total:.3f} kgf\n\
+   CORTANTE BASAL = {Vs:.3f} kg')
 
 #%% Se define la estructura
 xnod = np.array([[0, 0],   # coordenadas de cada nodo [x, y]
@@ -216,7 +207,7 @@ for e in range(nbar):
 #%% Se dibuja la estructura junto con su numeración
 plt.figure(1)
 for e in range(nbar):
-   plt.plot(xnod[LaG[e,:],X], xnod[LaG[e,:],Y], 'k-')
+   plt.plot(xnod[LaG[e,:],X], xnod[LaG[e,:],Y], 'b-')
    
    # Calculo la posición del centro de gravedad de la barra
    cgx = (xnod[LaG[e,NL1],X] + xnod[LaG[e,NL2],X])/2
@@ -225,11 +216,11 @@ for e in range(nbar):
 
 plt.plot(xnod[:,X], xnod[:,Y], 'ro')
 for n in range(nno):
-    plt.text(xnod[n,X], xnod[n,Y], str(n+1), color='k')
+    plt.text(xnod[n,X], xnod[n,Y], str(n+1))
     
 plt.axis('equal')
 plt.grid(visible=True, which='both', color='0.65',linestyle='-')
-plt.title('Numeración del pórtico')
+plt.title('Numeración de la estructura')
 plt.show()
 
 #%% ensamblo la matriz de rigidez global
@@ -332,7 +323,10 @@ lams = np.sort(np.array([ float( sp.re( sp.solve( poli_car, lam )[0]) ),
                           float( sp.re( sp.solve( poli_car, lam )[2]) )]
                         ))
 
-# Cálculo de vibraciones, frecuencias y periodos
+# =============================================================================
+#                   Cálculo de vibraciones, frecuencias y periodos
+# ============================================================================= 
+
 wwi = np.sqrt(lams)  # [rad/s]   Vector de frecuencias angulares.       
 Tt  = 2*np.pi/wwi    # [s]       Vector de periodos de la estructura.
 ff  = 1/Tt           # [Hz]      Vector de frecuencias.
@@ -367,25 +361,17 @@ for j in range(n_pisos):
    # Se agrega el vector normalizado en la matriz modal
    Phi[:,j] = Phi_j/np.sqrt(r_j)
 
-print('MATRIZ MODAL')
-print(Phi)
 compr_lams = Phi.T @ K_c @ Phi
 compr_Id = Phi.T @ M @ Phi
-print('Comprobación frecuencias')
+
 print(compr_lams.round(3))
-print('Comprobación identidad')
 print(compr_Id.round(3))
 
 # PARTICIPACIÓN MODAL
 alfa = Phi.T @ M @ np.ones((n_pisos,1))
-M_mod_efectiva = alfa**2
-participacion_masa = M_mod_efectiva/np.sum(M_mod_efectiva)
-pctj_participacion = participacion_masa*100
+M_mod_efectiva = alfa**2/np.sum(alfa**2)
+pctj_participacion = M_mod_efectiva*100
 
-
-print('Masa modal efectiva')
-print(M_mod_efectiva.round(2))
-print('Porcentaje de participación de masa')
 print(pctj_participacion.round(2))
 
 # GRÁFICO DE LOS MODOS Y DESPLAZAMIENTOS
@@ -399,19 +385,19 @@ fig.set_size_inches(10, 8)
 fig.supylabel('Altura [m]')
 fig.suptitle('Desplazamientos y derivas')
 ax = fig.add_subplot(1,2,1)
-ax.grid(visible=True)
+ax.grid()
 ax.plot(graf_U, graf_estruct, '--b')
 ax.plot(np.zeros(n_pisos+1), graf_estruct, '-k')
 ax.plot(np.zeros(n_pisos+1), graf_estruct, 'og')
-ax.plot(0,0,'_k', markersize=100)
+ax.plot(0,0,'_k', ms=100)
 ax.set_title(f"Desplazamientos [cm]")
 ax = fig.add_subplot(1,2,2)
-ax.grid(visible=True)
+ax.grid()
 ax.plot(graf_Urel, graf_estruct, ':r')
 ax.plot(np.zeros(n_pisos+1), graf_estruct, '-k')
 ax.plot(np.zeros(n_pisos+1), graf_estruct, 'og')
 ax.plot(np.zeros(n_pisos+1)+DeltaMAX, graf_estruct, '-.g', label=r'$\Delta_{max}$')
-ax.plot(0,0,'_k', markersize=100)
+ax.plot(0,0,'_k', ms=100)
 ax.legend()
 ax.set_title(f"Derivas [cm]")
 plt.show()
@@ -421,11 +407,11 @@ fig.set_size_inches(10, 8)
 fig.supylabel('Altura [m]')
 for i in range(n_pisos):
    ax = fig.add_subplot(1,3,1+i)
-   ax.grid(visible=True)
+   ax.grid()
    ax.plot(graf_Phi[:,i], graf_estruct, ':b')
    ax.plot(np.zeros(n_pisos+1), graf_estruct, '-k')
    ax.plot(np.zeros(n_pisos+1), graf_estruct, 'og')
-   ax.plot(0,0,'_k', markersize=100)
+   ax.plot(0,0,'_k', ms=100)
    ax.set_title(f"Modo {i+1}: "+r"$\omega$"+f"{i+1} = {wwi[i].round(3)} [rad/s]")
    lim = np.max(abs(Phi))+0.05
    ax.set_xlim([-lim, lim])
@@ -433,17 +419,8 @@ plt.show()
 
 
 
-# df1 = pd.DataFrame(K_c)
-# df2 = pd.DataFrame(np.stack((U,U_rel)))
-# df3 = pd.DataFrame(wwi)
-# df4 = pd.DataFrame(Phi)
-# df5 = pd.DataFrame(M_mod_efectiva)
-# filepath = 'Datos.xlsx'
-# with pd.ExcelWriter(filepath, mode='a') as writer:
-#    df1.to_excel(writer, "Matriz de rigidez", index=False)
-#    df2.to_excel(writer, "Desplazamientos y derivas", index=False)
-#    df3.to_excel(writer, "Frecuencias", index=False)
-#    df4.to_excel(writer, "Matriz modal", index=False)
-#    df5.to_excel(writer, "Masa efectiva", index=False)
+# df = pd.DataFrame(K_condensada)
+# filepath = 'MatrizK_con.xlsx'
+# df.to_excel(filepath, index=False)
 
 # %%
