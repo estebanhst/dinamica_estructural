@@ -25,12 +25,12 @@ def reducir_matriz(K, n_pisos):
    K_f = np.zeros((n_pisos, gdl))
    for i in range(n_pisos):
       for j in range(int(gdl/n_pisos)):
-         K_f[i] += K[i+3*j]
+         K_f[i] += K[i+n_pisos*j]
    # Ahora se reduce por columnas
    K_r = np.zeros((n_pisos, n_pisos))
    for i in range(n_pisos):
       for j in range(int(gdl/n_pisos)):
-         K_r[:,i] += K_f[:,i+3*j]
+         K_r[:,i] += K_f[:,i+n_pisos*j]
    return K_r
 def espectro_NSR10(param_loc, param_din, h, grafica = False):
     '''
@@ -109,9 +109,11 @@ def MFHE(masa_pisos, h_acumu, S_a, k):
 def matriz_rigidez_portico(datos_portico):
     xnod = datos_portico['xnod']
     barra = datos_portico['barra']
+    apoyos = datos_portico['apoyos']
     COL = datos_portico['COL']
     VIG = datos_portico['VIG']
     E_c = datos_portico['E']
+    n_porticos = datos_portico['n_porticos']
     LaG = barra[:, [NL1, NL2]]  # local a global
     tipo = barra[:, TIPO]        # material - 1 columna - 2 viga
     nno  = xnod.shape[0] # número de nodos (numero de filas de xnod)
@@ -200,17 +202,10 @@ def matriz_rigidez_portico(datos_portico):
         K[np.ix_(idx[e],idx[e])] += Ke[e] # ensambla Ke{e} en K global
 
     # grados de libertad del desplazamiento conocidos (c) y desconocidos (d)
-    apoyos = np.array([[gdl[1-1,X],  0],
-                    [gdl[1-1,Y],  0],
-                    [gdl[1-1,TH], 0],
-                    [gdl[5-1,X],  0],
-                    [gdl[5-1,Y],  0],
-                    [gdl[5-1,TH], 0],
-                    [gdl[9-1,X],  0],
-                    [gdl[9-1,Y],  0],
-                    [gdl[9-1,TH], 0]])
+    nodos_apoyos = np.arange(len(xnod))[xnod[:,1]==0]
+    c = np.array([gdl[ij] for ij in apoyos])
 
-    c = apoyos[:,0].astype(int)
+    #c = apoyos[:,0].astype(int)
     d = np.setdiff1d(np.arange(ngdl), c)
     gdl_nc = np.setdiff1d(d, np.union1d(gdl[:,Y], gdl[:,TH]))
     gdl_c = np.setdiff1d(d, gdl_nc)
@@ -222,16 +217,13 @@ def matriz_rigidez_portico(datos_portico):
 
     K_condensada = (K0 - K1 @ np.linalg.inv(K3) @ K2)*n_porticos
     return K_condensada
-def modal_analisis(masa_pisos):
-    global g
-    # %% SOLUCIÓN MODAL PARA EL CASO NO AMORTIGUADO
-    M = np.diag(masa_pisos/g) # kN*s²/m
+def modal_analisis(M, K):
     # Variables simbólicas.
     lam, ome, fi, alf = sp.symbols('lambda, omega, Phi, alpha')
 
     # Polinomio caracterísitco.
     # lam = ome^2
-    poli_car = sp.det(sp.Matrix(K_c - lam*M))
+    poli_car = sp.det(sp.Matrix(K - lam*M))
 
     # Solución de los lambdas,
     lams_u = np.zeros(len(masa_pisos))
@@ -267,7 +259,7 @@ def modal_analisis(masa_pisos):
 
     for j in range(n_pisos):
         # Se calcula el vector de amplitudes del movimiento armónico
-        Phi_j = np.linalg.eigh(K_c-lams[j]*M)[1][:,j]
+        Phi_j = np.linalg.eigh(K-lams[j]*M)[1][:,j]
         # Norma respecto a la masa
         r_j = Phi_j.T @ M @ Phi_j
         # Se agrega el vector normalizado en la matriz modal
@@ -275,7 +267,7 @@ def modal_analisis(masa_pisos):
 
     print('MATRIZ MODAL')
     print(Phi)
-    compr_lams = Phi.T @ K_c @ Phi
+    compr_lams = Phi.T @ K @ Phi
     compr_Id = Phi.T @ M @ Phi
     print('Comprobación frecuencias')
     print(compr_lams.round(3))
@@ -339,45 +331,44 @@ def modal_analisis(masa_pisos):
     return Phi
 
 # %% INICIO
-n_asignado = 7
 g = 9.8 # m/s²
 # Se asume que se tiene un edificio de concreto reforzado
 fpc = 21 # MPa
 E_c = 4700*np.sqrt(fpc)*1000  # [kN/m²]
-n_pisos = 3
-n_porticos = 4 # Número de pórticos en la dirección de análisis
-h_entrepiso = 3.4
-D_losa = 220+40*n_asignado  # kgf/m²
+n_pisos = 6
+h_entrepiso = 3.5
+D_losa = 460                # kgf/m²
 D_cub = D_losa/2            # kgf/m²
-Lu_dirY = np.array([6,6])         # [m] Luces en dirección Y
-Lu_dirX = np.array([6.5, 7, 6.5]) # [m] Luces en dirección X
+Lu_dirY = np.array([7,7])         # [m] Luces en dirección Y
+Lu_dirX = np.array([9,9,9]) # [m] Luces en dirección X
 LY = np.sum(Lu_dirY) # [m] Longitud total de la losa en dirección X
 LX = np.sum(Lu_dirX) # [m] Longitud total de la losa en dirección Y
 A_losa = LX*LY       # [m²]
-DeltaMAX = 3.4    # [cm]
-DeltaMAXmin = 3.3 # [cm]
-# Dimensiones de los elementos del pórtico np.array([b, h])
-COL = np.array([0.45, 0.5])
-VIG = np.array([0.3, 0.4])
+# Derivas entre el 0.95% y el 1%
+DeltaMAX = 0.01*h_entrepiso*100  # [cm]
+DeltaMAXmin = 0.0095*h_entrepiso*100 # [cm]
 
-# Ciudad = Manizales, Grupo de uso = II, Suelo = D
+# Dimensiones de los elementos del pórtico np.array([b, h])
+# LA BASE DE LA COLUMNA SE ALINEA CON EL EJE X DE LA PLANTA
+COL = np.array([0.85, 0.7])
+VIG = np.array([0.4, 0.6])
+
+# Ciudad = Manizales, Grupo de uso = I, Suelo = D
 param_loc = {
     'Aa':0.25,
     'Av':0.25,
     'Fa': 1.3,
     'Fv': 1.9,
-    'I': 1.10
+    'I': 1.0
 }
 # Parámetros dinámicos para una estructura con pórticos de concreto. 
 param_din = {
     'Ct': 0.047,
     'alfa': 0.90
 }
-
+#%% ESPECTRO
 # [Sa, T_a, k, T_0, T_C, T_L]
 espectro_norma_x = espectro_NSR10(param_loc, param_din, h_entrepiso*n_pisos, True)
-#%%
-
 T_a = espectro_norma_x['T_a']
 S_a = espectro_norma_x['S_a']
 k = espectro_norma_x['k']
@@ -404,21 +395,37 @@ FHE_piso = MFHE(masa_pisos, h_acumu, S_a, k)           # kN
 print('MÉTODO DE LA FUERZA HORIZONTAL EQUIVALENTE:\n\
 (se desprecia la masa aportada por las vigas y columnas)')
 print(f'F = \n{np.round(FHE_piso,3)}')
-#%% Se define la estructura
-datos_portico = {
+#%% MATRICES RIGIDEZ
+datos_portico_X = {
     'xnod' : np.array([
         [0, 0],   # coordenadas de cada nodo [x, y]
-        [0, 3.4],
-        [0, 6.8],
-        [0, 10.2],
-        [6, 0],
-        [6, 3.4],
-        [6, 6.8],
-        [6, 10.2],
-        [12, 0],
-        [12, 3.4],
-        [12, 6.8],
-        [12, 10.2]]),
+        [0, 3.5],
+        [0, 7.0],
+        [0, 10.5],
+        [0, 14],
+        [0, 17.5],
+        [0, 21.0],
+        [9, 0],   # coordenadas de cada nodo [x, y]
+        [9, 3.5],
+        [9, 7.0],
+        [9, 10.5],
+        [9, 14],
+        [9, 17.5],
+        [9, 21.0],
+        [18, 0],   # coordenadas de cada nodo [x, y]
+        [18, 3.5],
+        [18, 7.0],
+        [18, 10.5],
+        [18, 14],
+        [18, 17.5],
+        [18, 21.0],
+        [27, 0],   # coordenadas de cada nodo [x, y]
+        [27, 3.5],
+        [27, 7.0],
+        [27, 10.5],
+        [27, 14],
+        [27, 17.5],
+        [27, 21.0]]),
     'barra' : np.array([
         # LaG: local a global: matriz que relaciona nodos locales y globales
         # fila = barra
@@ -429,48 +436,240 @@ datos_portico = {
         [1,    2,   1],
         [2,    3,   1],
         [3,    4,   1],
+        [4,    5,   1],
         [5,    6,   1],
         [6,    7,   1],
-        [7,    8,   1],
+        [8,    9,   1],
         [9,   10,   1],
         [10,  11,   1],
         [11,  12,   1],
-        [2,    6,   2],
-        [3,    7,   2],
-        [4,    8,   2],
-        [6,   10,   2],
-        [7,   11,   2],
-        [8,   12,   2]])-1,
-    'COL': np.array([0.45, 0.5]),
-    'VIG': np.array([0.3, 0.4]),
-    'E'  : E_c
+        [12,  13,   1],
+        [13,  14,   1],
+        [15,  16,   1],
+        [16,  17,   1],
+        [17,  18,   1],
+        [18,  19,   1],
+        [19,  20,   1],
+        [20,  21,   1],
+        [22,  23,   1],
+        [23,  24,   1],
+        [24,  25,   1],
+        [25,  26,   1],
+        [26,  27,   1],
+        [27,  28,   1],
+        [2,    9,   2],
+        [3,   10,   2],
+        [4,   11,   2],
+        [5,   12,   2],
+        [6,   13,   2],
+        [7,   14,   2],
+        [9,   16,   2],
+        [10,  17,   2],
+        [11,  18,   2],
+        [12,  19,   2],
+        [13,  20,   2],
+        [14,  21,   2],
+        [16,  23,   2],
+        [17,  24,   2],
+        [18,  25,   2],
+        [19,  26,   2],
+        [20,  27,   2],
+        [21,  28,   2]])-1,
+    'apoyos' : [
+        (1 -1,   X),
+        (1 -1,   Y),
+        (1 -1,   TH),
+        (8 -1,   X),
+        (8 -1,   Y),
+        (8 -1,   TH),
+        (15-1,   X),
+        (15-1,   Y),
+        (15-1,   TH),
+        (22-1,   X),
+        (22-1,   Y),
+        (22-1,   TH)
+    ],
+    'COL': np.array([COL[h], COL[b]]), # Para considerar en el momento de inercia, la orientación de la columna
+    'VIG': VIG,
+    'E'  : E_c,
+    'n_porticos': 3
+}
+datos_portico_Y = {
+    'xnod' : np.array([
+        [0, 0],   # coordenadas de cada nodo [x, y]
+        [0, 3.5],
+        [0, 7.0],
+        [0, 10.5],
+        [0, 14],
+        [0, 17.5],
+        [0, 21.0],
+        [7, 0],   # coordenadas de cada nodo [x, y]
+        [7, 3.5],
+        [7, 7.0],
+        [7, 10.5],
+        [7, 14],
+        [7, 17.5],
+        [7, 21.0],
+        [14, 0],   # coordenadas de cada nodo [x, y]
+        [14, 3.5],
+        [14, 7.0],
+        [14, 10.5],
+        [14, 14],
+        [14, 17.5],
+        [14, 21.0]]),
+    'barra' : np.array([
+        # LaG: local a global: matriz que relaciona nodos locales y globales
+        # fila = barra
+        # col1 = nodo global asociado a nodo local 1
+        # col2 = nodo global asociado a nodo local 2
+        # (se lee la barra x va del nodo i al nodo j)
+        # NL1   NL2  TIPO -> 1 COL, 2 VIG
+        [1,    2,   1],
+        [2,    3,   1],
+        [3,    4,   1],
+        [4,    5,   1],
+        [5,    6,   1],
+        [6,    7,   1],
+        [8,    9,   1],
+        [9,   10,   1],
+        [10,  11,   1],
+        [11,  12,   1],
+        [12,  13,   1],
+        [13,  14,   1],
+        [15,  16,   1],
+        [16,  17,   1],
+        [17,  18,   1],
+        [18,  19,   1],
+        [19,  20,   1],
+        [20,  21,   1],
+        [2,    9,   2],
+        [3,   10,   2],
+        [4,   11,   2],
+        [5,   12,   2],
+        [6,   13,   2],
+        [7,   14,   2],
+        [9,   16,   2],
+        [10,  17,   2],
+        [11,  18,   2],
+        [12,  19,   2],
+        [13,  20,   2],
+        [14,  21,   2]])-1,
+    'apoyos' : [
+        (1 -1,   X),
+        (1 -1,   Y),
+        (1 -1,   TH),
+        (8 -1,   X),
+        (8 -1,   Y),
+        (8 -1,   TH),
+        (15-1,   X),
+        (15-1,   Y),
+        (15-1,   TH)
+    ],
+    'COL': COL,
+    'VIG': VIG,
+    'E'  : E_c,
+    'n_porticos': 4
 }
 
 # Ahora lo que resta es sumar los grados de libertad por cada piso para así reducir la matriz
 # AQUÍ SE EVIDENCIA LA IMPORTANCIA DE NUMERAR EN ORDEN PRIMERO LAS COLUMNAS Y LUEGO LAS VIGAS
-K_c = reducir_matriz(matriz_rigidez_portico(datos_portico), n_pisos) # kN/m
+K_c_x = reducir_matriz(matriz_rigidez_portico(datos_portico_X), n_pisos) # kN/m
+K_c_y = reducir_matriz(matriz_rigidez_portico(datos_portico_Y), n_pisos) # kN/m
+np.savetxt("K_c_x.csv", K_c_x)
+np.savetxt("K_c_y.csv", K_c_y)
 print('Sección columnas (b h):', COL,'\nSección vigas (b h):', VIG)
 print('MATRIZ DE RIGIDEZ CONDENSADA:')
-print(K_c.round(3))
+print('>>> K_c_x:')
+print(K_c_x.round(2))
+print('>>> K_c_y:')
+print(K_c_y.round(2))
 # Traigo las fuerzas del método de la fuerza horizontal equivalente
 # Cambio de unidades de kgf a kN
-F = FHE_piso                    # [kN]
-U = np.linalg.solve(K_c, F)*100 # [cm]
+F = FHE_piso                        # [kN]
+U_x = np.linalg.solve(K_c_x, F)*100 # [cm]
+U_y = np.linalg.solve(K_c_y, F)*100 # [cm]
+U_rel_x = U_x-np.vstack((0,U_x[:-1]))
+U_rel_y = U_y-np.vstack((0,U_y[:-1]))
+derivas_x = U_rel_x/h_entrepiso
+derivas_y = U_rel_y/h_entrepiso
 
-print('\nDESPLAZAMIENTOS [cm]:')
-print(U.round(3))
-U_rel = U-np.vstack((0,U[:-1]))
-derivas = U_rel/h_entrepiso
-print('DESPLAZAMIENTOS RELATIVOS [cm]:')
-print(U_rel.round(3))
-if DeltaMAXmin < max(U_rel) < DeltaMAX:
-   print("CUMPLE")
+if DeltaMAXmin < max(U_rel_x) < DeltaMAX:
+   print("CUMPLE EN X")
 else:
-   print("NO CUMPLE")
-print('DERIVAS [%]:')
-print(derivas.round(3))
+   print("NO CUMPLE EN X")
+if DeltaMAXmin < max(U_rel_y) < DeltaMAX:
+   print("CUMPLE EN Y")
+else:
+   print("NO CUMPLE EN Y")
 
-Phi = modal_analisis(masa_pisos)
+tabla_u_derivas = pd.DataFrame(
+    data = np.c_[U_x.round(3), U_rel_x.round(3), derivas_x.round(2), 
+            U_y.round(3), U_rel_y.round(3), derivas_y.round(2)],
+    index = np.arange(n_pisos)+1,
+    columns = ["U x [cm]", r"$\Delta$ x [cm]", r"$\delta$ x [%]", "U y [cm]", r"$\Delta$ y [cm]", r"$\delta$ y [%]"]
+)
+print(tabla_u_derivas)
+#%%
+# GRÁFICO DE DESPLAZAMIENTOS Y DERIVAS
+graf_estruct = np.insert(h_acumu,0,0)
+graf_U = np.vstack(
+    [np.zeros(2), np.c_[U_x, U_y]])
+graf_Urel = np.vstack(
+    [np.zeros(2), np.c_[U_rel_x, U_rel_y]])
+
+fig = plt.figure()
+fig.set_size_inches(10, 8)
+fig.supylabel('Altura [m]')
+fig.suptitle('Desplazamientos y derivas')
+for i in range(2):
+    dir = "x" if i==0 else "y"
+    ax = fig.add_subplot(2,2,2*i+1)
+    ax.grid(visible=True)
+    ax.plot(graf_U[:,i], graf_estruct, '--b')
+    ax.plot(np.zeros(n_pisos+1), graf_estruct, '-k')
+    ax.plot(np.zeros(n_pisos+1)[1:], graf_estruct[1:], 'og')
+    ax.plot(0,0,'_k', markersize=100)
+    ax.set_title(f"Desplazamientos {dir} [cm]")
+    ax = fig.add_subplot(2,2,2*i+2)
+    ax.grid(visible=True)
+    ax.plot(graf_Urel[:,i], graf_estruct, ':r')
+    ax.plot(np.zeros(n_pisos+1), graf_estruct, '-k')
+    ax.plot(np.zeros(n_pisos+1)[1:], graf_estruct[1:], 'og')
+    ax.plot(np.zeros(n_pisos+1)+DeltaMAX, graf_estruct, '-.g', label=r'$\Delta_{max}$')
+    ax.plot(0,0,'_k', markersize=100)
+    ax.legend()
+    ax.set_title(f"Derivas {dir} [cm]")
+plt.show()
+
+fig = plt.figure()
+fig.set_size_inches(10, 8)
+fig.supylabel('Altura [m]')
+fig.suptitle('Desplazamientos y derivas')
+
+ax = fig.add_subplot(1,2,1)
+ax.grid(visible=True)
+ax.plot(graf_U[:,0], graf_estruct, '--', label='U x')
+ax.plot(graf_U[:,1], graf_estruct, '--', label='U y')
+ax.plot(np.zeros(n_pisos+1), graf_estruct, '-k')
+ax.plot(np.zeros(n_pisos+1)[1:], graf_estruct[1:], 'og')
+ax.plot(0,0,'_k', markersize=100)
+ax.legend()
+ax.set_title("Desplazamientos [cm]")
+
+ax = fig.add_subplot(1,2,2)
+ax.grid(visible=True)
+ax.plot(graf_Urel[:,0], graf_estruct, ':', label=r'$\Delta$ x')
+ax.plot(graf_Urel[:,1], graf_estruct, ':', label=r'$\Delta$ y')
+ax.plot(np.zeros(n_pisos+1), graf_estruct, '-k')
+ax.plot(np.zeros(n_pisos+1)[1:], graf_estruct[1:], 'og')
+ax.plot(np.zeros(n_pisos+1)+DeltaMAX, graf_estruct, '-.g', label=r'$\Delta_{max}$')
+ax.plot(0,0,'_k', markersize=100)
+ax.legend()
+ax.set_title(f"Derivas [cm]")
+plt.show()
+# %% SOLUCIÓN MODAL PARA EL CASO NO AMORTIGUADO
+M = np.diag(masa_pisos/g) # kN*s²/m
+#Phi = modal_analisis(M, K_c_x)
 
 # df1 = pd.DataFrame(K_c)
 # df2 = pd.DataFrame(np.stack((U,U_rel)))
@@ -484,5 +683,3 @@ Phi = modal_analisis(masa_pisos)
 #    df3.to_excel(writer, "Frecuencias", index=False)
 #    df4.to_excel(writer, "Matriz modal", index=False)
 #    df5.to_excel(writer, "Masa efectiva", index=False)
-
-# %%
