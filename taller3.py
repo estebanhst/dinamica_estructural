@@ -217,7 +217,7 @@ def matriz_rigidez_portico(datos_portico):
 
     K_condensada = (K0 - K1 @ np.linalg.inv(K3) @ K2)*n_porticos
     return K_condensada
-def modal_analisis(M, K):
+def modal_analisis(M, K, U):
     # Variables simbólicas.
     lam, ome, fi, alf = sp.symbols('lambda, omega, Phi, alpha')
 
@@ -289,36 +289,12 @@ def modal_analisis(M, K):
     # GRÁFICO DE LOS MODOS Y DESPLAZAMIENTOS
     graf_Phi = np.concatenate((np.zeros((1,n_pisos)),Phi))
     graf_estruct = np.insert(h_acumu,0,0)
-    graf_U = np.insert(U,0,0)
-    graf_Urel = np.insert(U_rel,0,0)
-
-    fig = plt.figure()
-    fig.set_size_inches(10, 8)
-    fig.supylabel('Altura [m]')
-    fig.suptitle('Desplazamientos y derivas')
-    ax = fig.add_subplot(1,2,1)
-    ax.grid(visible=True)
-    ax.plot(graf_U, graf_estruct, '--b')
-    ax.plot(np.zeros(n_pisos+1), graf_estruct, '-k')
-    ax.plot(np.zeros(n_pisos+1), graf_estruct, 'og')
-    ax.plot(0,0,'_k', markersize=100)
-    ax.set_title(f"Desplazamientos [cm]")
-    ax = fig.add_subplot(1,2,2)
-    ax.grid(visible=True)
-    ax.plot(graf_Urel, graf_estruct, ':r')
-    ax.plot(np.zeros(n_pisos+1), graf_estruct, '-k')
-    ax.plot(np.zeros(n_pisos+1), graf_estruct, 'og')
-    ax.plot(np.zeros(n_pisos+1)+DeltaMAX, graf_estruct, '-.g', label=r'$\Delta_{max}$')
-    ax.plot(0,0,'_k', markersize=100)
-    ax.legend()
-    ax.set_title(f"Derivas [cm]")
-    plt.show()
 
     fig = plt.figure()
     fig.set_size_inches(10, 8)
     fig.supylabel('Altura [m]')
     for i in range(n_pisos):
-        ax = fig.add_subplot(1,3,1+i)
+        ax = fig.add_subplot(1,n_pisos,1+i)
         ax.grid(visible=True)
         ax.plot(graf_Phi[:,i], graf_estruct, ':b')
         ax.plot(np.zeros(n_pisos+1), graf_estruct, '-k')
@@ -669,7 +645,8 @@ ax.set_title(f"Derivas [cm]")
 plt.show()
 # %% SOLUCIÓN MODAL PARA EL CASO NO AMORTIGUADO
 M = np.diag(masa_pisos/g) # kN*s²/m
-#Phi = modal_analisis(M, K_c_x)
+Phi_x = modal_analisis(M, K_c_x, U_x)
+Phi_y = modal_analisis(M, K_c_y, U_y)
 
 # df1 = pd.DataFrame(K_c)
 # df2 = pd.DataFrame(np.stack((U,U_rel)))
