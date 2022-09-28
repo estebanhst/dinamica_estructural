@@ -1,6 +1,6 @@
 import numpy as np
 
-def modal_analisis(M, K):
+def analisis_modal(M, K):
     '''
     M: Matriz de masa
     K: Matriz de rigidez condensada
@@ -12,7 +12,7 @@ def modal_analisis(M, K):
     # [M]**-1[K]{Phi}=lam[I]{Phi}
     # (([M]**-1[K])-lam[I]){Phi} = {0}
     # Es decir, el problema se reduce a hallar los valores y vectores propios de [M]**-1[K]
-    lams, vectores = np.linalg.eig(np.linalg.inv(M)@K)
+    lams, vectores = np.linalg.eig(np.linalg.inv(M) @ K)
     # Se ordena
     idx = np.argsort(lams)
     lams = lams[idx]
@@ -23,20 +23,20 @@ def modal_analisis(M, K):
     f_i  = 1/T_i            # [Hz]      Vector de frecuencias.
 
     # MATRIZ MODAL
-    Phi = np.zeros((n_pisos, n_pisos))
+    Phi = np.zeros_like(K)
 
-    for j in range(n_pisos):
+    for j in range(N_PISOS):
         # Se calcula el vector de amplitudes del movimiento armónico
         Phi_j = vectores[:,j]
         # Norma respecto a la masa
         r_j = Phi_j.T @ M @ Phi_j
         # Se agrega el vector normalizado en la matriz modal
         Phi[:,j] = Phi_j/np.sqrt(r_j)
-
-    print('MATRIZ MODAL')
-    print(Phi)
     compr_lams = Phi.T @ K @ Phi
     compr_Id = Phi.T @ M @ Phi
+    print('MATRIZ MODAL')
+    print(Phi)
+    
     print('Comprobación frecuencias')
     print(compr_lams.round(3))
     print('Comprobación identidad')
@@ -44,7 +44,7 @@ def modal_analisis(M, K):
 
     return Phi, ome_i
 
-n_pisos = 6
+N_PISOS = 6
 h_entrepiso = 3.5 # m
 g = 9.8 # m/s²
 D_losa = 460                # kgf/m²
@@ -55,7 +55,7 @@ LY = np.sum(Lu_dirY) # [m] Longitud total de la losa en dirección X
 LX = np.sum(Lu_dirX) # [m] Longitud total de la losa en dirección Y
 A_losa = LX*LY       # [m²]
 
-masa_pisos = np.ones(n_pisos)*D_losa
+masa_pisos = np.ones(N_PISOS)*D_losa
 masa_pisos[-1] = D_cub
 masa_pisos = masa_pisos*A_losa*(g/1000)    # kN
 
@@ -83,6 +83,6 @@ print('MATRIZ DE RIGIDEZ en X:')
 print(np.round(K_c_x,1),'\n')
 print('MATRIZ DE RIGIDEZ en Y:')
 print(np.round(K_c_y,1))
-Phi_x, omegas_x = modal_analisis(M, K_c_x)
-Phi_y, omegas_y = modal_analisis(M, K_c_y)
+Phi_x, omegas_x = analisis_modal(M, K_c_x)
+Phi_y, omegas_y = analisis_modal(M, K_c_y)
 print('Fin (?)')
