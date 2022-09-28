@@ -1,24 +1,22 @@
 import numpy as np
-import sympy as sp
 
 def modal_analisis(M, K):
     '''
     M: Matriz de masa
     K: Matriz de rigidez condensada
     '''
-    # Variables simbólicas.
-    lam = sp.symbols('lambda')
-
-    # Polinomio caracterísitco.
     # lam = ome^2
-    poli_car = sp.det(sp.Matrix(K - lam*M))
-
-    # Solución de los lambdas,
-    # lams_u, son sin ordenar
-    lams_u = np.zeros(n_pisos)
-    for i in range(len(lams_u)):
-        lams_u[i] = float( sp.re( sp.solve( poli_car, lam )[i]))
-    lams = np.sort(lams_u)
+    # ([K]-lam[M]){Phi} = {0}
+    # [K]{Phi} = lam[M]{Phi}
+    # Premultiplicando por [M]**-1
+    # [M]**-1[K]{Phi}=lam[I]{Phi}
+    # (([M]**-1[K])-lam[I]){Phi} = {0}
+    # Es decir, el problema se reduce a hallar los valores y vectores propios de [M]**-1[K]
+    lams, vectores = np.linalg.eig(np.linalg.inv(M)@K)
+    # Se ordena
+    idx = np.argsort(lams)
+    lams = lams[idx]
+    vectores = vectores[:,idx]
     # Cálculo de vibraciones, frecuencias y periodos
     ome_i = np.sqrt(lams)   # [rad/s]   Vector de frecuencias angulares.       
     T_i  = 2*np.pi/ome_i    # [s]       Vector de periodos de la estructura.
@@ -29,7 +27,7 @@ def modal_analisis(M, K):
 
     for j in range(n_pisos):
         # Se calcula el vector de amplitudes del movimiento armónico
-        Phi_j = np.linalg.eigh(K-lams[j]*M)[1][:,j]
+        Phi_j = vectores[:,j]
         # Norma respecto a la masa
         r_j = Phi_j.T @ M @ Phi_j
         # Se agrega el vector normalizado en la matriz modal
@@ -88,11 +86,3 @@ print(np.round(K_c_y,1))
 Phi_x, omegas_x = modal_analisis(M, K_c_x)
 Phi_y, omegas_y = modal_analisis(M, K_c_y)
 print('Fin (?)')
-
-# EJEMPLO 3X3
-masa_3x3 = np.array([1176., 1176.,  588.])
-K_c_3 = np.array([
-    [92469.06815,	-51997.0215,	10437.98732],
-    [-51997.0215,	73682.94594,	-34463.36867],
-    [10437.98732,	-34463.36867,	25736.37767]
-])
