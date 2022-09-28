@@ -88,3 +88,11 @@ print(np.round(K_c_y,1))
 Phi_x, omegas_x = modal_analisis(M, K_c_x)
 Phi_y, omegas_y = modal_analisis(M, K_c_y)
 print('Fin (?)')
+
+# EJEMPLO 3X3
+masa_3x3 = np.array([1176., 1176.,  588.])
+K_c_3 = np.array([
+    [92469.06815,	-51997.0215,	10437.98732],
+    [-51997.0215,	73682.94594,	-34463.36867],
+    [10437.98732,	-34463.36867,	25736.37767]
+])
