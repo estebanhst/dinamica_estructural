@@ -266,7 +266,85 @@ def analisis_modal(M, K):
     return Phi, ome_i, M_mod_efectiva, participacion_masa
 def T_Rayleigh(M, F, U):
     return 2*np.pi*np.sqrt(np.sum(M*(U/100)**2)/np.sum(F*(U/100)))
+def ADLTH(K, Phi, alfa, sismo, omega, xi):
+    ''' ANÁLISIS DINÁMICO LINEAL TIEMPO HISTORIA
+    Resolución de las ecuaciones desacopladas para cada instante de tiempo
+    
+        eta'' + 2 xi omega eta' + omega² eta = - alfa x_0''
+        eta'' + p(t) eta' + q(t) eta = F(T)
+    '''
+    # Definimos las funciones F, p y q.
+    def F(t):
+        F = -alfa[modo]*sismo[i,1]
+        return F
 
+    def p(t):
+        p = 2*xi*omega[modo]
+        return p
+
+    def q(t):
+        q = omega[modo]**2
+        return q
+
+    # Para aprovechar la potencialidad de python utilizaremos un único vector cuyas componentes
+    # serán la posicíon y la velocidad. En este caso lo llamamos x.
+    # Definimos las derivadas de la posición x[0] y de la velocidad x[1]
+        
+    def dxdt(t,x):
+        deriv = np.array([0.,0.])
+        deriv[0] = x[1]
+        deriv[1] = F(t) - p(t) * x[1] - q(t) * x[0] # la derivada de la velocidad
+                                                    # se puede obtener a partir de la ecuación diferencial
+        return deriv
+
+    # Definimos una función que mediante el algoritmo de Runge-Kutta de 4to orden nos devuelve
+    # la posición y la velocidad en t+h. Se le debe proporcionar x(t) y las derivadas en t. 
+    def rk4(deriv,h,x,t):
+        hh = h/2.
+        h6 = h/6.
+        th = t+hh
+        xt = x+hh*deriv
+        dxt = dxdt(th,xt)
+        xt = x+hh*dxt
+        dxm = dxdt(th,xt)
+        xt = x+h*dxm
+        dxm = dxt+dxm
+        dxt = dxdt(t+h,xt)
+        conf_th = x+h6*(deriv+dxt+2.*dxm)   
+        return conf_th
+    # Este es el cuerpo de cálculo
+    instantes = len(sismo[:,0])
+    modos = Phi.shape[0]
+    eta = np.zeros((modos, instantes))
+    h=sismo[1,0]               # paso temporal
+    for modo in range(modos):
+        x=np.array([0.,0.]) # condiciones iniciales
+        traj = x              # traj almacenará la posición y la velocidad en función del tiempo
+        for i in range(instantes):
+            t = sismo[i,0]             
+            deriv = dxdt(t,x)        # calculamos las derivadas en tiempo t
+            x_new = rk4(deriv,h,x,t) # las nuevas posición y velocidad calculadas mediante RK4
+            traj = np.vstack([traj,x_new]) # almacenamos posición y velocidad
+            x = x_new                     # las nuevas condiciones iniciales para el paso posterior
+                                        # serán las obtenidas luego de la evolución
+        eta[modo,:] = traj[1:,0]
+    U = Phi @ eta
+    U_mod = [None]*instantes
+    F_mod = [None]*instantes
+    for i in range(instantes):
+        for modo in range(modos):
+            U_m = [None]*modos
+            F_m = [None]*modos
+            U_m[modo] = Phi[:,modo] * eta[modo,i]
+            F_m[modo] = K @ (U_m[modo])
+        U_mod[i] = U_m
+        F_mod[i] = F_m
+    F = K @ U
+    V = np.ones((1, modos))@F
+    Mom = h_acumu.T @ F
+    # etap = traj[1:,1]
+    # etapp = alfa*sismo[:,1]-2*xi*omega*etap-omega**2*eta
+    return eta, U, F, V, Mom, U_mod, F_mod
 # %% INICIO
 N_PISOS = 6
 g = 9.80665 # m/s²
@@ -552,6 +630,32 @@ np.savetxt("mme_x.csv", mme_x)
 np.savetxt("mme_y.csv", mme_y)
 np.savetxt("pmasa_x.csv", pmasa_x)
 np.savetxt("pmasa_y.csv", pmasa_y)
+
+# %% ANÁLISIS DINÁMICO LINEAL TIEMPO HISTORIA
+xi = 0.05
+Japon2011=np.loadtxt("Japon_2011.txt")
+th_eta, th_U, th_F, th_V = [None]*2, [None]*2, [None]*2, [None]*2
+th_Mom, th_U_mod, th_F_mod= [None]*2, [None]*2, [None]*2
+(th_eta[X], th_U[X], th_F[X], th_V[X], 
+th_Mom[X], th_U_mod[X], th_F_mod[X]) = ADLTH(K_c_x,
+    Phi_x, np.sqrt(mme_x),Japon2011, ome_x, xi)
+(th_eta[Y], th_U[Y], th_F[Y], th_V[Y], 
+th_Mom[Y], th_U_mod[Y], th_F_mod[Y]) = ADLTH(K_c_y, 
+    Phi_y, np.sqrt(mme_y),Japon2011, ome_y, xi)
+
+np.savetxt("th_etaX.csv", th_eta[X])
+np.savetxt("th_etaY.csv", th_eta[Y])
+np.savetxt("th_UX.csv", th_U[X])
+np.savetxt("th_UY.csv", th_U[Y])
+np.savetxt("th_FX.csv", th_F[X])
+np.savetxt("th_FY.csv", th_F[Y])
+np.savetxt("th_VX.csv", th_V[X])
+np.savetxt("th_VY.csv", th_V[Y])
+np.savetxt("th_MomX.csv", th_Mom[X])
+np.savetxt("th_MomY.csv", th_Mom[Y])
+#np.savetxt("th_U_modX.csv", th_U_mod[X])
+#np.savetxt("th_F_modX.csv", th_F_mod[Y])
+
 #%% GRÁFICOS
 
 graf_estruct = np.insert(h_acumu,0,0)
@@ -649,4 +753,23 @@ for i in range(N_PISOS):
         loc='upper center', 
         bbox_to_anchor=(0.5, 1.2))
     ax.set_xlim([-lim, lim])
+plt.show()
+
+# TIEMPO HISTORIA
+fig = plt.figure()
+fig.suptitle("Respuesta de las ecuaciones desacopladas")
+ax1 = fig.add_subplot(2,1,1)
+ax2 = fig.add_subplot(2,1,2)
+
+ax1.plot(Japon2011[:,0], th_eta[X].T, label=[f'Modo {i+1}' for i in range(N_PISOS)])
+ax1.set_title('Dirección X')
+ax1.set_xlabel('Tiempo (s)')
+ax1.set_ylabel(r'$\eta$')
+ax1.legend()
+
+ax2.plot(Japon2011[:,0], th_eta[Y].T, label=[f'Modo {i+1}' for i in range(N_PISOS)])
+ax2.set_title('Dirección Y')
+ax2.set_xlabel('Tiempo (s)')
+ax2.set_ylabel(r'$\eta$')
+ax2.legend()
 plt.show()
