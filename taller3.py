@@ -539,7 +539,7 @@ print(tabla_u_derivas)
 
 # %% PERIODO DE RAYLEIGH
 T_Ray_X = T_Rayleigh(M,F,U_x)
-T_Ray_Y = T_Rayleigh(M,F,U_x)
+T_Ray_Y = T_Rayleigh(M,F,U_y)
 
 # %% SOLUCIÓN MODAL PARA EL CASO NO AMORTIGUADO
 Phi_x, ome_x, mme_x, pmasa_x = analisis_modal(M, K_c_x)
