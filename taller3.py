@@ -269,7 +269,7 @@ def T_Rayleigh(M, F, U):
 
 # %% INICIO
 N_PISOS = 6
-g = 9.8 # m/s²
+g = 9.80665 # m/s²
 # Se asume que se tiene un edificio de concreto reforzado
 fpc = 21 # MPa
 E_c = 4700*np.sqrt(fpc)*1000  # [kN/m²]
@@ -284,8 +284,8 @@ A_losa = LX*LY       # [m²]
 masa_pisos = np.ones(N_PISOS)*D_losa
 masa_pisos[-1] = D_cub
 masa_pisos = masa_pisos*A_losa*(g/1000)    # kN
-# MATRIZ DE MASA
-M = np.diag(masa_pisos/g) # kN*s²/m
+M = np.diag(masa_pisos/g) # kN*s²/m        # MATRIZ DE MASA
+np.savetxt("M.csv", M)
 h_acumu = (np.arange(N_PISOS)+1)*h_entrepiso # m
 # Derivas entre el 0.95% y el 1%
 DeltaMAX = 0.01*h_entrepiso*100  # [cm]
@@ -544,8 +544,14 @@ T_Ray_Y = T_Rayleigh(M,F,U_y)
 # %% SOLUCIÓN MODAL PARA EL CASO NO AMORTIGUADO
 Phi_x, ome_x, mme_x, pmasa_x = analisis_modal(M, K_c_x)
 Phi_y, ome_y, mme_y, pmasa_y = analisis_modal(M, K_c_y)
-np.savetxt("Phi_x.csv", K_c_x)
-np.savetxt("Phi_y.csv", K_c_y)
+np.savetxt("Phi_x.csv", Phi_x)
+np.savetxt("Phi_y.csv", Phi_y)
+np.savetxt("ome_x.csv", ome_x)
+np.savetxt("ome_y.csv", ome_y)
+np.savetxt("mme_x.csv", mme_x)
+np.savetxt("mme_y.csv", mme_y)
+np.savetxt("pmasa_x.csv", pmasa_x)
+np.savetxt("pmasa_y.csv", pmasa_y)
 #%% GRÁFICOS
 
 graf_estruct = np.insert(h_acumu,0,0)
