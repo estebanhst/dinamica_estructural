@@ -284,6 +284,8 @@ A_losa = LX*LY       # [m²]
 masa_pisos = np.ones(N_PISOS)*D_losa
 masa_pisos[-1] = D_cub
 masa_pisos = masa_pisos*A_losa*(g/1000)    # kN
+# MATRIZ DE MASA
+M = np.diag(masa_pisos/g) # kN*s²/m
 h_acumu = (np.arange(N_PISOS)+1)*h_entrepiso # m
 # Derivas entre el 0.95% y el 1%
 DeltaMAX = 0.01*h_entrepiso*100  # [cm]
@@ -535,11 +537,15 @@ tabla_u_derivas = pd.DataFrame(
 )
 print(tabla_u_derivas)
 
+# %% PERIODO DE RAYLEIGH
+T_Ray_X = T_Rayleigh(M,F,U_x)
+T_Ray_Y = T_Rayleigh(M,F,U_x)
+
 # %% SOLUCIÓN MODAL PARA EL CASO NO AMORTIGUADO
-M = np.diag(masa_pisos/g) # kN*s²/m
 Phi_x, ome_x, mme_x, pmasa_x = analisis_modal(M, K_c_x)
 Phi_y, ome_y, mme_y, pmasa_y = analisis_modal(M, K_c_y)
-
+np.savetxt("Phi_x.csv", K_c_x)
+np.savetxt("Phi_y.csv", K_c_y)
 #%% GRÁFICOS
 
 graf_estruct = np.insert(h_acumu,0,0)
@@ -548,7 +554,7 @@ graf_U = np.vstack(
 graf_Urel = np.vstack(
     [np.zeros(2), np.c_[U_rel_x, U_rel_y]])
 graf_Phi_x = np.concatenate((np.zeros((1,N_PISOS)),Phi_x))
-graf_Phi_y = np.concatenate((np.zeros((1,N_PISOS)),Phi_x))
+graf_Phi_y = np.concatenate((np.zeros((1,N_PISOS)),Phi_y))
 
 # DESPLAZAMIENTOS
 fig = plt.figure()
